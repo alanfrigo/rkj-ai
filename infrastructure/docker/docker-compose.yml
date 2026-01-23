@@ -1,0 +1,239 @@
+# ===========================================
+# Meeting Assistant - Docker Compose (Development)
+# ===========================================
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # -------------------------------------------
+  # Redis (Message Queue & Cache)
+  # -------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ma-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - meeting-assistant
+
+  # -------------------------------------------
+  # Backend API (FastAPI)
+  # -------------------------------------------
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: ma-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ../../apps/api/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - meeting-assistant
+
+  # -------------------------------------------
+  # Scheduler (Calendar Sync & Meeting Detection)
+  # -------------------------------------------
+  scheduler:
+    build:
+      context: ../../services/scheduler
+      dockerfile: Dockerfile
+    container_name: ma-scheduler
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - BOT_JOIN_BEFORE_MINUTES=${BOT_JOIN_BEFORE_MINUTES:-2}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ../../services/scheduler/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - meeting-assistant
+  # -------------------------------------------
+  # Bot Orchestrator (Container Management)
+  # -------------------------------------------
+  bot-orchestrator:
+    build:
+      context: ../../services/bot-orchestrator
+      dockerfile: Dockerfile
+    container_name: ma-bot-orchestrator
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - BOT_DISPLAY_NAME=${BOT_DISPLAY_NAME:-Meeting Assistant Bot 🤖}
+      - BOT_MAX_DURATION_HOURS=${BOT_MAX_DURATION_HOURS:-4}
+      - BOT_IMAGE=docker-meet-bot:latest
+      - DOCKER_NETWORK=meeting-assistant-network
+      - RECORDINGS_VOLUME=docker_recordings
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GOOGLE_AUTH_LOGIN=${GOOGLE_AUTH_LOGIN}
+      - GOOGLE_AUTH_PASSWORD=${GOOGLE_AUTH_PASSWORD}
+    volumes:
+      # Docker socket for spawning bot containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared recordings volume
+      - recordings:/recordings
+      - ../../services/bot-orchestrator/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - meeting-assistant
+
+  # -------------------------------------------
+  # Meet Bot (Build only - spawned by orchestrator)
+  # -------------------------------------------
+  meet-bot:
+    build:
+      context: ../../services/meet-bot
+      dockerfile: Dockerfile
+    image: docker-meet-bot:latest
+    # This service is not started directly
+    # It's spawned by the bot-orchestrator when needed
+    profiles:
+      - build-only
+
+  # -------------------------------------------
+  # Transcription Worker
+  # -------------------------------------------
+  transcription-worker:
+    build:
+      context: ../../services/transcription-worker
+      dockerfile: Dockerfile
+    container_name: ma-transcription-worker
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_WHISPER_MODEL=${OPENAI_WHISPER_MODEL:-whisper-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - recordings:/recordings:ro
+      - temp_audio:/tmp/audio
+      - ../../services/transcription-worker/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - meeting-assistant
+
+  # -------------------------------------------
+  # Media Processor (Video/Audio Processing)
+  # TODO: Uncomment when services/media-processor is created
+  # -------------------------------------------
+  # media-processor:
+  #   build:
+  #     context: ../../services/media-processor
+  #     dockerfile: Dockerfile
+  #   container_name: ma-media-processor
+  #   restart: unless-stopped
+  #   environment:
+  #     - SUPABASE_URL=${SUPABASE_URL}
+  #     - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+  #     - REDIS_URL=redis://redis:6379
+  #     - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+  #     - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+  #     - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+  #     - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   volumes:
+  #     - recordings:/recordings
+  #     - temp_media:/tmp/media
+  #     - ../../services/media-processor/src:/app/src:ro
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - meeting-assistant
+
+  # -------------------------------------------
+  # BullMQ Dashboard (Optional - Dev Only)
+  # -------------------------------------------
+  bull-board:
+    image: deadly0/bull-board
+    container_name: ma-bull-board
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BULL_PREFIX=bull
+    depends_on:
+      - redis
+    networks:
+      - meeting-assistant
+    profiles:
+      - dev
+
+# -------------------------------------------
+# Volumes
+# -------------------------------------------
+volumes:
+  redis_data:
+    driver: local
+  recordings:
+    driver: local
+  temp_audio:
+    driver: local
+  temp_media:
+    driver: local
+
+# -------------------------------------------
+# Networks
+# -------------------------------------------
+networks:
+  meeting-assistant:
+    driver: bridge
+    name: meeting-assistant-network

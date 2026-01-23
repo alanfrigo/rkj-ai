@@ -1,0 +1,22 @@
+# ===========================================
+# Transcription Worker Dependencies
+# ===========================================
+
+# OpenAI
+openai==1.9.0
+
+# Audio Processing
+pydub==0.25.1
+
+# Redis Queue
+redis==5.0.1
+
+# Supabase
+supabase==2.10.0
+
+# Cloudflare R2 (S3 compatible)
+boto3==1.34.14
+botocore==1.34.14
+
+# Utilities
+python-dateutil==2.8.2

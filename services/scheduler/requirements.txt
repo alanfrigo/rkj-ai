@@ -1,0 +1,17 @@
+# ===========================================
+# Scheduler Service Dependencies
+# ===========================================
+
+# Redis Queue
+redis==5.0.1
+
+# Supabase
+supabase==2.10.0
+
+# Google Calendar
+google-api-python-client==2.114.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+
+# Utilities
+python-dateutil==2.8.2

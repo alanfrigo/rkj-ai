@@ -1,0 +1,15 @@
+# ===========================================
+# Bot Orchestrator Dependencies
+# ===========================================
+
+# Docker SDK
+docker==7.0.0
+
+# Redis Queue
+redis==5.0.1
+
+# Supabase
+supabase==2.10.0
+
+# Utilities
+python-dateutil==2.8.2
