@@ -43,10 +43,14 @@ export default function LoginClient() {
         setGoogleLoading(true);
         setError(null);
 
+        // Use NEXT_PUBLIC_APP_URL to ensure consistent URL for PKCE flow
+        // This prevents code_verifier mismatch when accessing via 0.0.0.0 vs localhost
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/callback`,
+                redirectTo: `${appUrl}/callback`,
                 scopes: "email profile",
             },
         });

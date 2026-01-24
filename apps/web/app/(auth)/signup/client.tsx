@@ -26,6 +26,9 @@ export default function SignupClient() {
         setLoading(true);
         setError(null);
 
+        // Use NEXT_PUBLIC_APP_URL to ensure consistent URL for redirects
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
         const { error } = await supabase.auth.signUp({
             email,
             password,
@@ -33,7 +36,7 @@ export default function SignupClient() {
                 data: {
                     full_name: fullName,
                 },
-                emailRedirectTo: `${window.location.origin}/callback`,
+                emailRedirectTo: `${appUrl}/callback`,
             },
         });
 
@@ -51,10 +54,13 @@ export default function SignupClient() {
         setGoogleLoading(true);
         setError(null);
 
+        // Use NEXT_PUBLIC_APP_URL to ensure consistent URL for PKCE flow
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/callback`,
+                redirectTo: `${appUrl}/callback`,
                 scopes: "email profile",
             },
         });

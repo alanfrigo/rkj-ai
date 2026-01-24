@@ -29,12 +29,16 @@ services:
   # -------------------------------------------
   # Web Frontend (Next.js 16)
   # -------------------------------------------
+  # IMPORTANT: NEXT_PUBLIC_* variables are embedded in the JS bundle and accessed by the BROWSER.
+  # The browser CANNOT resolve host.docker.internal - it must use localhost.
+  # Server-side code inside the container can use host.docker.internal via SUPABASE_URL.
   web:
     build:
       context: ../../apps/web
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
+        # CRITICAL: Use localhost for browser-facing URLs (NOT host.docker.internal)
+        - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     container_name: ma-web
@@ -42,9 +46,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
+      # CRITICAL: Use localhost for browser-facing URLs (NOT host.docker.internal)
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # Server-side URL for internal container communication
+      - SUPABASE_URL=${SUPABASE_URL:-http://host.docker.internal:54321}
       - ORCHESTRATOR_URL=http://bot-orchestrator:8002
     depends_on:
       redis:
@@ -54,6 +61,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    extra_hosts:
+      # Allow the container to resolve localhost to the host machine
+      # This enables using the same Supabase URL for both browser and server (required for PKCE cookies)
+      - "localhost:host-gateway"
     networks:
       - meeting-assistant
 
