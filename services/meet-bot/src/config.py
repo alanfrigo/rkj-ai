@@ -44,6 +44,7 @@ class Config:
     R2_ACCESS_KEY_ID: str = os.getenv("R2_ACCESS_KEY_ID", "")
     R2_SECRET_ACCESS_KEY: str = os.getenv("R2_SECRET_ACCESS_KEY", "")
     R2_BUCKET_NAME: str = os.getenv("R2_BUCKET_NAME", "meeting-assistant")
+    R2_PUBLIC_URL: str = os.getenv("R2_PUBLIC_URL", "")  # Public URL for R2 (e.g., https://pub-xxx.r2.dev)
     
     # OpenAI (Transcription)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")

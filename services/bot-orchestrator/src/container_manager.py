@@ -54,8 +54,10 @@ class ContainerManager:
                 "R2_ACCESS_KEY_ID": config.R2_ACCESS_KEY_ID,
                 "R2_SECRET_ACCESS_KEY": config.R2_SECRET_ACCESS_KEY,
                 "R2_BUCKET_NAME": config.R2_BUCKET_NAME,
+                "R2_PUBLIC_URL": config.R2_PUBLIC_URL,
                 "GOOGLE_AUTH_LOGIN": config.GOOGLE_AUTH_LOGIN,
                 "GOOGLE_AUTH_PASSWORD": config.GOOGLE_AUTH_PASSWORD,
+                "OPENAI_API_KEY": config.OPENAI_API_KEY,
             }
             
             # Run the container

@@ -56,17 +56,24 @@ async def create_recording_record(supabase, meeting_id: str, storage_path: str, 
     if DRY_RUN:
         logger.info(f"[DRY_RUN] Would create recording for meeting {meeting_id}")
         return "dry-run-recording-id"
+    
+    # Build public URL for the recording
+    storage_url = None
+    if config.R2_PUBLIC_URL and storage_path:
+        storage_url = f"{config.R2_PUBLIC_URL}/{storage_path}"
+    
     recording = supabase.table('recordings').insert({
         "meeting_id": meeting_id,
         "file_type": "combined",
         "file_name": os.path.basename(storage_path),
         "storage_path": storage_path,
+        "storage_url": storage_url,  # Public URL for frontend access
         "duration_seconds": duration,
         "format": "mp4",
         "is_processed": True
     }).execute().data[0]
     
-    logger.info(f"Created recording record: {recording['id']}")
+    logger.info(f"Created recording record: {recording['id']} with URL: {storage_url}")
     return recording['id']
 
 

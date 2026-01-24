@@ -77,6 +77,13 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     const statusInfo = getStatusInfo(meeting.status);
     const recording = meeting.recordings?.[0];
 
+    // Fallback logic for video URL if storage_url is missing but storage_path exists
+    const videoUrl = recording?.storage_url || (
+        recording?.storage_path && process.env.NEXT_PUBLIC_R2_URL
+            ? `${process.env.NEXT_PUBLIC_R2_URL}/${recording.storage_path}`
+            : null
+    );
+
     // Sort transcriptions to get the most relevant one (completed first, then by date)
     const transcription = meeting.transcriptions?.sort((a: any, b: any) => {
         // Prioritize completed
@@ -90,7 +97,7 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Back Button */}
-            <Link href="/meetings">
+            <Link href="/dashboard/meetings">
                 <Button variant="ghost" size="sm" className="gap-2">
                     <ArrowLeft className="h-4 w-4" />
                     Voltar para reuniões
@@ -150,10 +157,10 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                     {/* Video Player */}
                     <Card className="border-border/50">
                         <CardContent className="p-0">
-                            {recording?.storage_url ? (
+                            {videoUrl ? (
                                 <div className="aspect-video bg-black rounded-t-xl overflow-hidden">
                                     <video
-                                        src={recording.storage_url}
+                                        src={videoUrl}
                                         controls
                                         className="w-full h-full"
                                         poster={recording.thumbnail_url}
@@ -182,8 +189,8 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                                     <div className="text-sm text-muted-foreground">
                                         {recording.format?.toUpperCase()} • {formatDuration(recording.duration_seconds)}
                                     </div>
-                                    {recording.storage_url && (
-                                        <a href={recording.storage_url} download>
+                                    {videoUrl && (
+                                        <a href={videoUrl} download>
                                             <Button variant="ghost" size="sm" className="gap-2">
                                                 <Download className="h-4 w-4" />
                                                 Download
