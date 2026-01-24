@@ -12,7 +12,10 @@ from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from .config import config
 from .recorder import Recorder
 from .upload import R2Uploader
-from .caption_scraper import CaptionScraper
+from .caption_scraper import CaptionScraper, CaptionSegment
+import json
+import tempfile
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -979,6 +982,38 @@ class MeetBot:
             self.meeting_id
         )
         logger.info(f"Recording uploaded: {storage_path}")
+        
+        # Upload captions if available
+        if self.caption_scraper:
+            try:
+                # Get all segments including active ones
+                segments = self.caption_scraper.get_segments()
+                
+                if segments:
+                    logger.info(f"Uploading {len(segments)} caption segments...")
+                    
+                    # Convert to detailed dicts
+                    segments_data = [seg.to_dict() for seg in segments]
+                    
+                    # Save to temp file
+                    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp_json:
+                        json.dump(segments_data, tmp_json, indent=2)
+                        json_path = Path(tmp_json.name)
+                    
+                    try:
+                        self.uploader.upload_captions_json(
+                            json_path,
+                            self.user_id,
+                            self.meeting_id
+                        )
+                    finally:
+                        if json_path.exists():
+                            json_path.unlink()
+                else:
+                    logger.warning("No caption segments found to upload")
+            except Exception as e:
+                logger.error(f"Failed to upload captions: {e}")
+        
         return storage_path
     
     async def monitor_meeting(self):

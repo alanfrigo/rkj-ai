@@ -15,7 +15,9 @@ from openai import OpenAI
 from pydub import AudioSegment
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from supabase import create_client
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -52,6 +54,47 @@ def format_timestamp(seconds: float) -> str:
     if td.days > 0:
         hours += td.days * 24
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+class SpeakerAttributor:
+    """Attributes speakers to transcription segments using captured captions"""
+    
+    def __init__(self, captions_path: str):
+        self.captions = []
+        if os.path.exists(captions_path):
+            try:
+                with open(captions_path, 'r') as f:
+                    self.captions = json.load(f)
+                logger.info(f"Loaded {len(self.captions)} caption segments for attribution")
+            except Exception as e:
+                logger.error(f"Failed to load captions: {e}")
+    
+    def get_speaker_at_time(self, timestamp_ms: int) -> str:
+        """Get the speaker who was most likely active at a given timestamp"""
+        if not self.captions:
+            return None
+        
+        TIME_TOLERANCE_MS = 5000  # 5 second tolerance
+        
+        best_match = None
+        best_score = float('inf')
+        
+        for seg in self.captions:
+            # Check if timestamp falls within segment
+            if seg['start_ms'] <= timestamp_ms <= seg['end_ms']:
+                return seg['speaker']
+            
+            # Calculate distance to segment
+            if timestamp_ms < seg['start_ms']:
+                distance = seg['start_ms'] - timestamp_ms
+            else:
+                distance = timestamp_ms - seg['end_ms']
+            
+            # Keep track of closest segment within tolerance
+            if distance < TIME_TOLERANCE_MS and distance < best_score:
+                best_score = distance
+                best_match = seg['speaker']
+        
+        return best_match
 
 class TranscriptionWorker:
     """Worker that processes transcription jobs"""
@@ -174,13 +217,39 @@ class TranscriptionWorker:
                 self.supabase.table('transcription_segments').insert(segments).execute()
                 logger.info(f"Saved {len(segments)} segments")
             
-            # Format transcription with timestamps
+            # Format transcription with timestamps and speakers
             formatted_lines = []
+            
+            # Try to download and load captions for attribution
+            captions_file = local_path.replace(".mp3", ".json")
+            attributor = None
+            
+            try:
+                captions_path = recording['storage_path'].replace(Path(recording['storage_path']).name, "captions.json")
+                logger.info(f"Downloading captions from R2: {captions_path}")
+                self.r2.download_file(R2_BUCKET_NAME, captions_path, captions_file)
+                attributor = SpeakerAttributor(captions_file)
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    logger.info("No captions.json found for this recording")
+                else:
+                    logger.warning(f"Error checking for captions: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to setup speaker attribution: {e}")
+
             for segment in result.get("segments", []):
                 start_time = segment.get("start", 0)
+                start_ms = int(start_time * 1000)
                 timestamp = format_timestamp(start_time)
                 text = segment.get("text", "").strip()
-                formatted_lines.append(f"[{timestamp}] {text}")
+                
+                speaker_prefix = ""
+                if attributor:
+                    speaker = attributor.get_speaker_at_time(start_ms)
+                    if speaker:
+                        speaker_prefix = f" [{speaker}]"
+                
+                formatted_lines.append(f"[{timestamp}]{speaker_prefix} {text}")
             
             full_text = "\n".join(formatted_lines)
             word_count = len(full_text.split())
@@ -233,6 +302,8 @@ class TranscriptionWorker:
             # Cleanup
             if 'local_path' in locals() and os.path.exists(local_path):
                 os.unlink(local_path)
+            if 'captions_file' in locals() and os.path.exists(captions_file):
+                os.unlink(captions_file)
     
     def transcribe_file(self, file_path: str, language: str) -> dict:
         """Transcribe a single file using OpenAI Whisper API"""
