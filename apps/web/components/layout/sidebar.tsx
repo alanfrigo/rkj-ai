@@ -24,9 +24,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-    { label: "Dashboard", href: "/", icon: <Home className="h-5 w-5" /> },
-    { label: "Reuniões", href: "/meetings", icon: <Calendar className="h-5 w-5" /> },
-    { label: "Configurações", href: "/settings", icon: <Settings className="h-5 w-5" /> },
+    { label: "Dashboard", href: "/dashboard", icon: <Home className="h-5 w-5" /> },
+    { label: "Reuniões", href: "/dashboard/meetings", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Configurações", href: "/dashboard/settings", icon: <Settings className="h-5 w-5" /> },
 ];
 
 export function Sidebar() {
@@ -44,7 +44,7 @@ export function Sidebar() {
         <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="h-16 flex items-center px-4 border-b border-border">
-                <Link href="/" className="flex items-center gap-2">
+                <Link href="/dashboard" className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                         <Video className="h-4 w-4 text-primary-foreground" />
                     </div>
