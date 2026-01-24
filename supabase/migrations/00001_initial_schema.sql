@@ -54,7 +54,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 -- Connected Calendars
 -- -------------------------------------------
 CREATE TABLE public.connected_calendars (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     -- Calendar provider
     provider TEXT NOT NULL CHECK (provider IN ('google', 'outlook', 'apple')),
@@ -81,7 +81,7 @@ CREATE TABLE public.connected_calendars (
 -- Calendar Events
 -- -------------------------------------------
 CREATE TABLE public.calendar_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     calendar_id UUID REFERENCES public.connected_calendars(id) ON DELETE SET NULL,
     -- External event ID (from Google/Outlook)
@@ -121,7 +121,7 @@ CREATE TABLE public.calendar_events (
 -- Meetings (Recorded Sessions)
 -- -------------------------------------------
 CREATE TABLE public.meetings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     calendar_event_id UUID REFERENCES public.calendar_events(id) ON DELETE SET NULL,
     -- Meeting info
@@ -167,7 +167,7 @@ CREATE TABLE public.meetings (
 -- Recordings (Media Files)
 -- -------------------------------------------
 CREATE TABLE public.recordings (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES public.meetings(id) ON DELETE CASCADE,
     -- File info
     file_type TEXT NOT NULL CHECK (file_type IN ('video', 'audio', 'screen', 'combined')),
@@ -201,7 +201,7 @@ CREATE TABLE public.recordings (
 -- Transcriptions
 -- -------------------------------------------
 CREATE TABLE public.transcriptions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id UUID NOT NULL REFERENCES public.meetings(id) ON DELETE CASCADE,
     recording_id UUID REFERENCES public.recordings(id) ON DELETE SET NULL,
     -- Transcription settings
@@ -240,7 +240,7 @@ CREATE TABLE public.transcriptions (
 -- Transcription Segments
 -- -------------------------------------------
 CREATE TABLE public.transcription_segments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     transcription_id UUID NOT NULL REFERENCES public.transcriptions(id) ON DELETE CASCADE,
     -- Ordering
     segment_index INTEGER NOT NULL,
@@ -267,7 +267,7 @@ CREATE TABLE public.transcription_segments (
 -- Processing Jobs (Queue Tracking)
 -- -------------------------------------------
 CREATE TABLE public.processing_jobs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Reference
     meeting_id UUID REFERENCES public.meetings(id) ON DELETE CASCADE,
     recording_id UUID REFERENCES public.recordings(id) ON DELETE CASCADE,
