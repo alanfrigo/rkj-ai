@@ -12,7 +12,7 @@ export default async function MeetingsPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get all meetings
+    // Get all recorded meetings
     const { data: meetings } = await supabase
         .from("meetings")
         .select(`
@@ -26,10 +26,49 @@ export default async function MeetingsPage() {
       actual_end,
       duration_seconds,
       participant_count,
+      calendar_event_id,
       created_at
     `)
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false });
+
+    // Get upcoming calendar events
+    const { data: calendarEvents } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .eq("user_id", user?.id)
+        .eq("status", "confirmed")
+        .order("start_time", { ascending: true });
+
+    // Merge and filter
+    const meetingCalendarIds = new Set(meetings?.map(m => m.calendar_event_id).filter(Boolean));
+
+    const upcomingMeetings = (calendarEvents || [])
+        .filter(event => !meetingCalendarIds.has(event.id))
+        .map(event => ({
+            id: event.id,
+            title: event.title,
+            meeting_provider: event.meeting_provider,
+            meeting_url: event.meeting_url,
+            status: "scheduled",
+            scheduled_start: event.start_time,
+            actual_start: null,
+            actual_end: null,
+            duration_seconds: null,
+            participant_count: 0,
+            calendar_event_id: event.id,
+            created_at: event.created_at,
+            is_upcoming_event: true
+        }));
+
+    const allMeetings = [
+        ...(meetings || []).map(m => ({ ...m, is_upcoming_event: false })),
+        ...upcomingMeetings
+    ].sort((a, b) => {
+        const dateA = new Date(a.scheduled_start || a.created_at).getTime();
+        const dateB = new Date(b.scheduled_start || b.created_at).getTime();
+        return dateB - dateA;
+    });
 
     const formatDuration = (seconds: number | null) => {
         if (!seconds) return "--";
@@ -90,61 +129,74 @@ export default async function MeetingsPage() {
             </div>
 
             {/* Meetings List */}
-            {meetings && meetings.length > 0 ? (
+            {allMeetings.length > 0 ? (
                 <div className="grid gap-4">
-                    {meetings.map((meeting) => {
+                    {allMeetings.map((meeting) => {
                         const statusInfo = getStatusInfo(meeting.status);
-
-                        return (
-                            <Link key={meeting.id} href={`/meetings/${meeting.id}`}>
-                                <Card className="border-border/50 hover:border-border transition-colors">
-                                    <CardContent className="p-4 sm:p-6">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div className="flex items-start sm:items-center gap-4">
-                                                <div className={`h-12 w-12 rounded-xl flex-shrink-0 flex items-center justify-center ${meeting.status === "completed"
-                                                    ? "bg-success/20 text-success"
-                                                    : meeting.status === "recording"
-                                                        ? "bg-destructive/20 text-destructive"
-                                                        : "bg-info/20 text-info"
-                                                    }`}>
-                                                    <Video className="h-6 w-6" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <h3 className="font-semibold text-lg">{meeting.title}</h3>
-                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                                        <span className="flex items-center gap-1">
-                                                            <Calendar className="h-4 w-4" />
-                                                            {meeting.scheduled_start
-                                                                ? new Date(meeting.scheduled_start).toLocaleDateString("pt-BR", {
-                                                                    day: "numeric",
-                                                                    month: "short",
-                                                                    year: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                })
-                                                                : "Sem data"}
-                                                        </span>
-                                                        {meeting.duration_seconds && (
-                                                            <span>• {formatDuration(meeting.duration_seconds)}</span>
-                                                        )}
-                                                        {meeting.participant_count && meeting.participant_count > 0 && (
-                                                            <span>• {meeting.participant_count} participantes</span>
-                                                        )}
-                                                    </div>
-                                                </div>
+                        const href = meeting.is_upcoming_event ? "#" : `/dashboard/meetings/${meeting.id}`;
+                        const cardContent = (
+                            <Card className={`border-border/50 transition-colors ${!meeting.is_upcoming_event ? "hover:border-border" : ""}`}>
+                                <CardContent className="p-4 sm:p-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-start sm:items-center gap-4">
+                                            <div className={`h-12 w-12 rounded-xl flex-shrink-0 flex items-center justify-center ${meeting.status === "completed"
+                                                ? "bg-success/20 text-success"
+                                                : meeting.status === "recording"
+                                                    ? "bg-destructive/20 text-destructive"
+                                                    : meeting.status === "scheduled" && meeting.meeting_url
+                                                        ? "bg-info/20 text-info"
+                                                        : "bg-muted text-muted-foreground"
+                                                }`}>
+                                                <Video className="h-6 w-6" />
                                             </div>
-
-                                            <div className="flex items-center gap-3 ml-16 sm:ml-0">
-                                                <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${statusInfo.color}`}>
-                                                    {statusInfo.label}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground capitalize">
-                                                    {meeting.meeting_provider?.replace("_", " ")}
-                                                </span>
+                                            <div className="space-y-1">
+                                                <h3 className="font-semibold text-lg">{meeting.title}</h3>
+                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <Calendar className="h-4 w-4" />
+                                                        {meeting.scheduled_start
+                                                            ? new Date(meeting.scheduled_start).toLocaleDateString("pt-BR", {
+                                                                day: "numeric",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })
+                                                            : "Sem data"}
+                                                    </span>
+                                                    {meeting.duration_seconds && (
+                                                        <span>• {formatDuration(meeting.duration_seconds)}</span>
+                                                    )}
+                                                    {meeting.participant_count > 0 && (
+                                                        <span>• {meeting.participant_count} participantes</span>
+                                                    )}
+                                                    {meeting.is_upcoming_event && !meeting.meeting_url && (
+                                                        <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] uppercase font-bold">Sem link</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </CardContent>
-                                </Card>
+
+                                        <div className="flex items-center gap-3 ml-16 sm:ml-0">
+                                            <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${statusInfo.color}`}>
+                                                {statusInfo.label}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground capitalize">
+                                                {meeting.meeting_provider?.replace("_", " ") || "calendário"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+
+                        if (meeting.is_upcoming_event) {
+                            return <div key={meeting.id}>{cardContent}</div>;
+                        }
+
+                        return (
+                            <Link key={meeting.id} href={href}>
+                                {cardContent}
                             </Link>
                         );
                     })}

@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import math
 
 import redis.asyncio as redis
@@ -43,6 +43,15 @@ COST_PER_MINUTE_CENTS = 0.6  # $0.006 per minute
 # Queue name
 QUEUE_NAME = "queue:transcription"
 
+
+def format_timestamp(seconds: float) -> str:
+    """Format seconds to HH:MM:SS"""
+    td = timedelta(seconds=int(seconds))
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if td.days > 0:
+        hours += td.days * 24
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 class TranscriptionWorker:
     """Worker that processes transcription jobs"""
@@ -165,14 +174,26 @@ class TranscriptionWorker:
                 self.supabase.table('transcription_segments').insert(segments).execute()
                 logger.info(f"Saved {len(segments)} segments")
             
-            # Update transcription record
-            full_text = result.get("text", "")
+            # Format transcription with timestamps
+            formatted_lines = []
+            for segment in result.get("segments", []):
+                start_time = segment.get("start", 0)
+                timestamp = format_timestamp(start_time)
+                text = segment.get("text", "").strip()
+                formatted_lines.append(f"[{timestamp}] {text}")
+            
+            full_text = "\n".join(formatted_lines)
             word_count = len(full_text.split())
             
+            # Parse start time and ensure it's timezone-aware
+            start_time = datetime.fromisoformat(
+                transcription["processing_started_at"].replace("Z", "+00:00")
+            )
+            if start_time.tzinfo is None:
+                start_time = start_time.replace(tzinfo=timezone.utc)
+
             processing_time = int(
-                (datetime.utcnow() - datetime.fromisoformat(
-                    transcription["processing_started_at"].replace("Z", "")
-                )).total_seconds()
+                (datetime.now(timezone.utc) - start_time).total_seconds()
             )
             
             self.supabase.table('transcriptions').update({

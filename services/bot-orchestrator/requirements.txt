@@ -2,8 +2,10 @@
 # Bot Orchestrator Dependencies
 # ===========================================
 
-# Docker SDK
-docker==7.0.0
+# Docker SDK - Stable version for unix sockets
+docker==6.1.3
+urllib3<2.0.0
+requests==2.31.0
 
 # Redis Queue
 redis==5.0.1

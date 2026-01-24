@@ -63,25 +63,31 @@ export async function POST(request: Request) {
         }
 
         // Queue bot job via Redis
-        // For now, we'll call the orchestrator directly via internal API
-        // In production, this would be a Redis queue job
         try {
-            const orchestratorUrl = process.env.ORCHESTRATOR_URL || "http://localhost:8002";
+            const Redis = require("ioredis");
+            const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
-            await fetch(`${orchestratorUrl}/api/join`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
+            const jobData = {
+                id: uuidv4(),
+                type: "join_meeting",
+                data: {
                     meeting_id: meetingId,
                     meeting_url: meetingUrl,
                     user_id: user.id,
-                }),
-            });
-        } catch (orchError) {
-            console.error("Failed to notify orchestrator:", orchError);
-            // Don't fail the request - the bot might still pick it up
+                },
+                created_at: new Date().toISOString()
+            };
+
+            // Push to the same queue the orchestrator is listening to
+            // default queue name: "queue:join_meeting"
+            await redis.rpush("queue:join_meeting", JSON.stringify(jobData));
+
+            // Close connection to prevent leaks in serverless/lambda environment
+            redis.quit();
+
+        } catch (queueError) {
+            console.error("Failed to queue job:", queueError);
+            // Don't fail the request - the bot might not start immediately but the record is created
         }
 
         return NextResponse.json({

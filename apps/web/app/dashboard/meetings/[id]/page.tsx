@@ -76,7 +76,16 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
 
     const statusInfo = getStatusInfo(meeting.status);
     const recording = meeting.recordings?.[0];
-    const transcription = meeting.transcriptions?.[0];
+
+    // Sort transcriptions to get the most relevant one (completed first, then by date)
+    const transcription = meeting.transcriptions?.sort((a: any, b: any) => {
+        // Prioritize completed
+        if (a.status === 'completed' && b.status !== 'completed') return -1;
+        if (a.status !== 'completed' && b.status === 'completed') return 1;
+
+        // Then by creation date (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })?.[0];
 
     return (
         <div className="space-y-6 animate-fade-in">

@@ -128,6 +128,8 @@ services:
       dockerfile: Dockerfile
     container_name: ma-bot-orchestrator
     restart: unless-stopped
+    ports:
+      - "8002:8002"
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}

@@ -109,10 +109,8 @@ class CalendarSync:
         
         # Extract meeting URL
         meeting_url = self.extract_meeting_url(event)
-        if not meeting_url:
-            return  # Skip events without meeting URLs
-        
-        meeting_provider = self.detect_provider(meeting_url)
+        meeting_provider = self.detect_provider(meeting_url) if meeting_url else None
+        should_record = meeting_url is not None
         
         # Parse times
         start = event.get('start', {})
@@ -133,17 +131,19 @@ class CalendarSync:
             "meeting_provider": meeting_provider,
             "organizer_email": event.get('organizer', {}).get('email'),
             "attendees": event.get('attendees', []),
-            "status": event.get('status', 'confirmed'),
-            "should_record": True
+            "status": 'confirmed' if event.get('status') == 'confirmed' else 'tentative', # Map to allowed status
+            "should_record": should_record
         }
         
         # Upsert to database
-        self.supabase.table('calendar_events').upsert(
-            event_data,
-            on_conflict='user_id,external_event_id'
-        ).execute()
-        
-        logger.debug(f"Processed event: {event_data['title']}")
+        try:
+            self.supabase.table('calendar_events').upsert(
+                event_data,
+                on_conflict='user_id,external_event_id'
+            ).execute()
+            logger.info(f"Processed event: {event_data['title']} (URL: {meeting_url})")
+        except Exception as e:
+            logger.error(f"Failed to upsert event {event_id}: {e}")
     
     def extract_meeting_url(self, event: dict) -> Optional[str]:
         """Extract meeting URL from event"""

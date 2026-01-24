@@ -41,12 +41,13 @@ export default async function DashboardPage() {
         .eq("status", "completed");
 
     const { count: scheduledMeetings } = await supabase
-        .from("meetings")
+        .from("calendar_events")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user?.id)
-        .eq("status", "scheduled");
+        .eq("status", "confirmed")
+        .gte("start_time", new Date().toISOString());
 
-    // Get recent meetings
+    // Get recent meetings (recorded)
     const { data: recentMeetings } = await supabase
         .from("meetings")
         .select(`
@@ -56,10 +57,28 @@ export default async function DashboardPage() {
       status,
       scheduled_start,
       actual_start,
-      duration_seconds
+      duration_seconds,
+      created_at
     `)
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false })
+        .limit(5);
+
+    // Get upcoming calendar events
+    const { data: upcomingEvents } = await supabase
+        .from("calendar_events")
+        .select(`
+      id,
+      title,
+      meeting_provider,
+      meeting_url,
+      start_time,
+      should_record
+    `)
+        .eq("user_id", user?.id)
+        .eq("status", "confirmed")
+        .gte("start_time", new Date().toISOString())
+        .order("start_time", { ascending: true })
         .limit(5);
 
     // Get connected calendars
@@ -159,7 +178,7 @@ export default async function DashboardPage() {
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-base">Próximas Reuniões</CardTitle>
-                            <Link href="/meetings">
+                            <Link href="/dashboard/meetings">
                                 <Button variant="ghost" size="sm">
                                     Ver todas
                                     <ArrowRight className="h-3 w-3 ml-1" />
@@ -168,31 +187,31 @@ export default async function DashboardPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {recentMeetings && recentMeetings.filter(m => m.status === "scheduled").length > 0 ? (
+                        {upcomingEvents && upcomingEvents.length > 0 ? (
                             <div className="space-y-2">
-                                {recentMeetings.filter(m => m.status === "scheduled").slice(0, 3).map((meeting) => (
-                                    <Link
-                                        key={meeting.id}
-                                        href={`/meetings/${meeting.id}`}
+                                {upcomingEvents.slice(0, 3).map((event) => (
+                                    <div
+                                        key={event.id}
                                         className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
                                     >
-                                        <div className="h-8 w-8 rounded-lg bg-info/20 flex items-center justify-center">
-                                            <Clock className="h-4 w-4 text-info" />
+                                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${event.should_record ? "bg-info/20 text-info" : "bg-muted text-muted-foreground"}`}>
+                                            <Clock className="h-4 w-4" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm truncate">{meeting.title}</p>
+                                            <p className="font-medium text-sm truncate">{event.title}</p>
                                             <p className="text-xs text-muted-foreground">
-                                                {meeting.scheduled_start
-                                                    ? new Date(meeting.scheduled_start).toLocaleString("pt-BR", {
+                                                {event.start_time
+                                                    ? new Date(event.start_time).toLocaleString("pt-BR", {
                                                         day: "numeric",
                                                         month: "short",
                                                         hour: "2-digit",
                                                         minute: "2-digit",
                                                     })
                                                     : "Sem data"}
+                                                {!event.should_record && " • Não gravável"}
                                             </p>
                                         </div>
-                                    </Link>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -214,7 +233,7 @@ export default async function DashboardPage() {
                         <CardTitle>Reuniões Recentes</CardTitle>
                         <CardDescription>Suas últimas reuniões gravadas e agendadas</CardDescription>
                     </div>
-                    <Link href="/meetings">
+                    <Link href="/dashboard/meetings">
                         <Button variant="outline" size="sm">
                             Ver todas
                             <ArrowRight className="h-4 w-4 ml-1" />
@@ -227,7 +246,7 @@ export default async function DashboardPage() {
                             {recentMeetings.map((meeting) => (
                                 <Link
                                     key={meeting.id}
-                                    href={`/meetings/${meeting.id}`}
+                                    href={`/dashboard/meetings/${meeting.id}`}
                                     className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
                                 >
                                     <div className="flex items-center gap-4">

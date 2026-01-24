@@ -52,7 +52,7 @@ export function JoinMeetingCard() {
 
             // Redirect to the meeting page after a short delay
             setTimeout(() => {
-                router.push(`/meetings/${data.meeting.id}`);
+                router.push(`/dashboard/meetings/${data.meeting.id}`);
             }, 1500);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Erro desconhecido");
