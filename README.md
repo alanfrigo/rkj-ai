@@ -294,10 +294,10 @@ kubectl apply -f infrastructure/k8s/
 ## 📝 Roadmap
 
 - [x] Arquitetura base
-- [ ] MVP - Google Calendar Sync
-- [ ] MVP - Google Meet Bot
-- [ ] MVP - Gravação básica
-- [ ] MVP - Transcrição OpenAI
+- [x] MVP - Google Calendar Sync
+- [x] MVP - Google Meet Bot
+- [x] MVP - Gravação básica
+- [x] MVP - Transcrição OpenAI
 - [ ] Dashboard básico
 - [ ] Zoom Bot
 - [ ] Speaker Diarization

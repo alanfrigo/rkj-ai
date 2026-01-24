@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build
+.next/
+out/
+
+# Testing
+coverage/
+
+# Misc
+*.log
+.DS_Store
+
+# Local env files (except .env.local which we want)
+.env*.local
+!.env.local.example
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
