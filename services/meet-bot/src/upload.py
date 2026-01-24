@@ -70,6 +70,38 @@ class R2Uploader:
             logger.error(f"Failed to upload to R2: {e}")
             raise
     
+    def upload_transcription(
+        self,
+        local_path: Path,
+        user_id: str,
+        meeting_id: str
+    ) -> str:
+        """
+        Upload transcription txt file to R2
+        
+        Returns the storage path (key) in R2
+        """
+        storage_path = f"recordings/{user_id}/{meeting_id}/transcription.txt"
+        
+        logger.info(f"Uploading transcription {local_path} to R2: {storage_path}")
+        
+        try:
+            self.client.upload_file(
+                str(local_path),
+                self.bucket,
+                storage_path,
+                ExtraArgs={
+                    "ContentType": "text/plain; charset=utf-8"
+                }
+            )
+            
+            logger.info(f"Transcription upload complete: {storage_path}")
+            return storage_path
+            
+        except Exception as e:
+            logger.error(f"Failed to upload transcription to R2: {e}")
+            raise
+    
     def generate_presigned_url(
         self,
         storage_path: str,

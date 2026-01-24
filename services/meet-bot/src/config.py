@@ -45,6 +45,11 @@ class Config:
     R2_SECRET_ACCESS_KEY: str = os.getenv("R2_SECRET_ACCESS_KEY", "")
     R2_BUCKET_NAME: str = os.getenv("R2_BUCKET_NAME", "meeting-assistant")
     
+    # OpenAI (Transcription)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_WHISPER_MODEL: str = os.getenv("OPENAI_WHISPER_MODEL", "whisper-1")
+    TRANSCRIPTION_LANGUAGE: str = os.getenv("TRANSCRIPTION_LANGUAGE", "pt")
+    
     # Display
     DISPLAY: str = os.getenv("DISPLAY", ":99")
     RESOLUTION: tuple = (1920, 1080)

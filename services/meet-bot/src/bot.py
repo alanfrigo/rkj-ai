@@ -12,6 +12,7 @@ from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from .config import config
 from .recorder import Recorder
 from .upload import R2Uploader
+from .caption_scraper import CaptionScraper
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class MeetBot:
         
         self.recorder = Recorder(meeting_id)
         self.uploader = R2Uploader()
+        self.caption_scraper: Optional[CaptionScraper] = None
         
         self.is_in_meeting = False
         self.meeting_ended = False
@@ -375,17 +377,17 @@ class MeetBot:
             'button[aria-label="Fechar"]',
         ]
         
-        # Try to find and click any of these
+        # Try to find and click any of these - use short timeouts for speed
         for _ in range(3): # Try a few times
             clicked = False
             for selector in popup_selectors:
                 try:
-                    # Use a short timeout to check quickly
-                    btn = await self.page.wait_for_selector(selector, timeout=1000)
+                    # Use very short timeout to check quickly
+                    btn = await self.page.wait_for_selector(selector, timeout=500)
                     if btn and await btn.is_visible():
                         logger.info(f"Dismissing popup: {selector}")
                         await btn.click()
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(0.3)
                         clicked = True
                 except:
                     pass
@@ -950,10 +952,22 @@ class MeetBot:
         """Start recording the meeting"""
         logger.info("Starting recording...")
         await self.recorder.start()
+        
+        # Start caption scraping for speaker detection
+        if self.page:
+            self.caption_scraper = CaptionScraper(self.page)
+            # Enable captions (needed for speaker detection)
+            await self.caption_scraper.enable_captions()
+            await self.caption_scraper.start_scraping()
     
     async def stop_recording(self):
         """Stop recording"""
         logger.info("Stopping recording...")
+        
+        # Stop caption scraping
+        if self.caption_scraper:
+            await self.caption_scraper.stop_scraping()
+        
         return await self.recorder.stop()
     
     async def upload_recording(self, recording_path) -> str:

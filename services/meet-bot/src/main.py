@@ -14,6 +14,7 @@ from supabase import create_client
 
 from .config import config
 from .bot import MeetBot
+from .transcriber import Transcriber
 
 # Global reference for signal handlers
 _bot_instance = None
@@ -252,19 +253,63 @@ async def main():
             exit_code = EXIT_UPLOAD_ERROR
             return
         
-        # Create recording record
-        recording_id = await create_recording_record(
-            supabase,
-            meeting_id,
-            storage_path,
-            bot.get_duration_seconds()
-        )
-        
-        # Update status to transcribing
+        # Transcribe recording directly (before database operations for DRY_RUN compatibility)
         await update_meeting_status(supabase, meeting_id, "transcribing")
         
-        # Enqueue transcription job
-        await enqueue_transcription(redis_client, meeting_id, recording_id, user_id)
+        transcription_path = None
+        try:
+            if config.OPENAI_API_KEY:
+                logger.info("Starting transcription...")
+                transcriber = Transcriber()
+                
+                # Get caption segments with speaker info (from live captions)
+                caption_segments = None
+                if bot.caption_scraper:
+                    caption_segments = bot.caption_scraper.get_segments()
+                    logger.info(f"Caption data: {len(caption_segments)} segments captured with speaker names")
+                
+                # Transcribe the audio with speaker info from captions
+                transcription_result = await transcriber.transcribe_audio(
+                    recording_path, 
+                    caption_segments=caption_segments
+                )
+                
+                # Save transcription file locally
+                transcription_path = recording_path.parent / "transcription.txt"
+                transcriber.save_transcription_file(transcription_result, transcription_path)
+                
+                # Upload to R2
+                transcription_storage_path = bot.uploader.upload_transcription(
+                    transcription_path,
+                    user_id,
+                    meeting_id
+                )
+                logger.info(f"Transcription uploaded: {transcription_storage_path}")
+            else:
+                logger.warning("OPENAI_API_KEY not set, skipping transcription")
+        except Exception as e:
+            logger.error(f"Transcription failed: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the whole process, just log and continue
+        
+        # Create recording record (may fail in DRY_RUN mode, but that's ok)
+        try:
+            recording_id = await create_recording_record(
+                supabase,
+                meeting_id,
+                storage_path,
+                bot.get_duration_seconds()
+            )
+            
+            # Enqueue transcription job for worker (if not already transcribed)
+            if not transcription_path:
+                await enqueue_transcription(redis_client, meeting_id, recording_id, user_id)
+        except Exception as e:
+            logger.warning(f"Database record creation failed (ok in DRY_RUN mode): {e}")
+        
+        # Update meeting status to completed
+        await update_meeting_status(supabase, meeting_id, "completed")
         
         logger.info("=" * 50)
         logger.info("Bot completed successfully!")
