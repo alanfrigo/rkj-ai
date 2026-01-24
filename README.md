@@ -298,7 +298,7 @@ kubectl apply -f infrastructure/k8s/
 - [x] MVP - Google Meet Bot
 - [x] MVP - Gravação básica
 - [x] MVP - Transcrição OpenAI
-- [ ] Dashboard básico
+- [x] Dashboard básico
 - [ ] Zoom Bot
 - [ ] Speaker Diarization
 - [ ] Resumos com IA
