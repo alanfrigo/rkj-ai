@@ -13,6 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { LabeledSwitch } from "@/components/ui/switch";
+import { UserAvatar } from "@/components/ui/avatar";
 
 export default async function SettingsPage() {
     const supabase = await createClient();
@@ -52,7 +55,17 @@ export default async function SettingsPage() {
                             Suas informações pessoais
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <UserAvatar
+                                name={profile?.full_name || user?.email || "User"}
+                                size="lg"
+                            />
+                            <div>
+                                <p className="font-medium">{profile?.full_name || "Usuário"}</p>
+                                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                            </div>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nome</Label>
@@ -92,9 +105,14 @@ export default async function SettingsPage() {
                                             </div>
                                             <div>
                                                 <p className="font-medium">{calendar.calendar_name || "Google Calendar"}</p>
-                                                <p className="text-sm text-muted-foreground capitalize">
-                                                    {calendar.provider} • {calendar.is_active ? "Ativo" : "Inativo"}
-                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-sm text-muted-foreground capitalize">
+                                                        {calendar.provider}
+                                                    </span>
+                                                    <Badge variant={calendar.is_active ? "success" : "secondary"}>
+                                                        {calendar.is_active ? "Ativo" : "Inativo"}
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
@@ -131,29 +149,17 @@ export default async function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium">Notificações por email</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Receba emails quando reuniões forem gravadas
-                                    </p>
-                                </div>
-                                <Button variant="outline" size="sm">
-                                    {profile?.settings?.email_notifications ? "Ativado" : "Desativado"}
-                                </Button>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium">Gravação automática</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Gravar automaticamente todas as reuniões
-                                    </p>
-                                </div>
-                                <Button variant="outline" size="sm">
-                                    {profile?.settings?.auto_record ? "Ativado" : "Desativado"}
-                                </Button>
-                            </div>
+                        <div className="space-y-6">
+                            <LabeledSwitch
+                                label="Notificações por email"
+                                description="Receba emails quando reuniões forem gravadas"
+                                defaultChecked={profile?.settings?.email_notifications ?? true}
+                            />
+                            <LabeledSwitch
+                                label="Gravação automática"
+                                description="Gravar automaticamente todas as reuniões"
+                                defaultChecked={profile?.settings?.auto_record ?? true}
+                            />
                         </div>
                     </CardContent>
                 </Card>

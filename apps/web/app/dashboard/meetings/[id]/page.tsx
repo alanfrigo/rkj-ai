@@ -16,6 +16,9 @@ import {
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MeetingPageProps {
     params: Promise<{ id: string }>;
@@ -57,24 +60,32 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
         return `${minutes}m ${secs}s`;
     };
 
-    const getStatusInfo = (status: string) => {
+    const getStatusVariant = (status: string): "completed" | "recording" | "scheduled" | "processing" | "default" => {
         switch (status) {
             case "completed":
-                return { label: "Concluída", color: "bg-success/20 text-success" };
+                return "completed";
             case "recording":
-                return { label: "Gravando", color: "bg-destructive/20 text-destructive animate-pulse" };
+                return "recording";
             case "scheduled":
-                return { label: "Agendada", color: "bg-info/20 text-info" };
+                return "scheduled";
             case "transcribing":
-                return { label: "Transcrevendo", color: "bg-primary/20 text-primary" };
             case "processing":
-                return { label: "Processando", color: "bg-primary/20 text-primary" };
+                return "processing";
             default:
-                return { label: status, color: "bg-muted text-muted-foreground" };
+                return "default";
         }
     };
 
-    const statusInfo = getStatusInfo(meeting.status);
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "completed": return "Concluída";
+            case "recording": return "Gravando";
+            case "scheduled": return "Agendada";
+            case "transcribing": return "Transcrevendo";
+            case "processing": return "Processando";
+            default: return status;
+        }
+    };
     const recording = meeting.recordings?.[0];
 
     // Fallback logic for video URL if storage_url is missing but storage_path exists
@@ -109,9 +120,9 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                 <div className="space-y-2">
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl sm:text-3xl font-bold">{meeting.title}</h1>
-                        <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${statusInfo.color}`}>
-                            {statusInfo.label}
-                        </span>
+                        <Badge variant={getStatusVariant(meeting.status)}>
+                            {getStatusLabel(meeting.status)}
+                        </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
@@ -286,16 +297,17 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                     {meeting.participants && Array.isArray(meeting.participants) && meeting.participants.length > 0 && (
                         <Card className="border-border/50">
                             <CardHeader>
-                                <CardTitle>Participantes</CardTitle>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Users className="h-4 w-4" />
+                                    Participantes
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ul className="space-y-2">
+                                <ul className="space-y-3">
                                     {meeting.participants.map((participant: string, i: number) => (
-                                        <li key={i} className="flex items-center gap-2 text-sm">
-                                            <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
-                                                {participant.charAt(0).toUpperCase()}
-                                            </div>
-                                            {participant}
+                                        <li key={i} className="flex items-center gap-3 text-sm">
+                                            <UserAvatar name={participant} size="sm" />
+                                            <span>{participant}</span>
                                         </li>
                                     ))}
                                 </ul>

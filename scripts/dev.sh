@@ -51,9 +51,10 @@ case "${1:-help}" in
         echo ""
         echo -e "${GREEN}✅ Services started!${NC}"
         echo ""
-        echo "  📊 Redis:     localhost:6379"
-        echo "  🔌 API:       http://localhost:8000"
-        echo "  📖 API Docs:  http://localhost:8000/docs"
+        echo "  🐥 Frontend:    http://localhost:3000"
+        echo "  📊 Redis:       localhost:6379"
+        echo "  🔌 API:         http://localhost:8000"
+        echo "  📖 API Docs:    http://localhost:8000/docs"
         echo ""
         ;;
     

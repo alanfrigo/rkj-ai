@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export default async function MeetingsPage() {
     const supabase = await createClient();
@@ -80,24 +81,29 @@ export default async function MeetingsPage() {
         return `${minutes}m`;
     };
 
-    const getStatusInfo = (status: string) => {
+    const getStatusVariant = (status: string): "completed" | "recording" | "scheduled" | "processing" | "failed" | "default" => {
         switch (status) {
-            case "completed":
-                return { label: "Concluída", color: "bg-success/20 text-success" };
-            case "recording":
-                return { label: "Gravando", color: "bg-destructive/20 text-destructive" };
-            case "scheduled":
-                return { label: "Agendada", color: "bg-info/20 text-info" };
+            case "completed": return "completed";
+            case "recording": return "recording";
+            case "scheduled": return "scheduled";
             case "joining":
-                return { label: "Entrando", color: "bg-warning/20 text-warning" };
             case "transcribing":
-                return { label: "Transcrevendo", color: "bg-primary/20 text-primary" };
-            case "processing":
-                return { label: "Processando", color: "bg-primary/20 text-primary" };
-            case "failed":
-                return { label: "Falhou", color: "bg-destructive/20 text-destructive" };
-            default:
-                return { label: status, color: "bg-muted text-muted-foreground" };
+            case "processing": return "processing";
+            case "failed": return "failed";
+            default: return "default";
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "completed": return "Concluída";
+            case "recording": return "Gravando";
+            case "scheduled": return "Agendada";
+            case "joining": return "Entrando";
+            case "transcribing": return "Transcrevendo";
+            case "processing": return "Processando";
+            case "failed": return "Falhou";
+            default: return status;
         }
     };
 
@@ -132,7 +138,6 @@ export default async function MeetingsPage() {
             {allMeetings.length > 0 ? (
                 <div className="grid gap-4">
                     {allMeetings.map((meeting) => {
-                        const statusInfo = getStatusInfo(meeting.status);
                         const href = meeting.is_upcoming_event ? "#" : `/dashboard/meetings/${meeting.id}`;
                         const cardContent = (
                             <Card className={`border-border/50 transition-colors ${!meeting.is_upcoming_event ? "hover:border-border" : ""}`}>
@@ -178,9 +183,9 @@ export default async function MeetingsPage() {
                                         </div>
 
                                         <div className="flex items-center gap-3 ml-16 sm:ml-0">
-                                            <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${statusInfo.color}`}>
-                                                {statusInfo.label}
-                                            </span>
+                                            <Badge variant={getStatusVariant(meeting.status)}>
+                                                {getStatusLabel(meeting.status)}
+                                            </Badge>
                                             <span className="text-xs text-muted-foreground capitalize">
                                                 {meeting.meeting_provider?.replace("_", " ") || "calendário"}
                                             </span>

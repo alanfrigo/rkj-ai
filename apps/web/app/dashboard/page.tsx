@@ -4,31 +4,29 @@ import { createClient } from "@/lib/supabase/server";
 import {
     Calendar,
     Video,
-    FileText,
     Clock,
     ArrowRight,
     Play,
-    CalendarDays
+    CalendarDays,
+    Mic
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { JoinMeetingCard } from "@/components/meetings/join-meeting-card";
 
 export default async function DashboardPage() {
     const supabase = await createClient();
 
-    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get user profile
     const { data: profile } = await supabase
         .from("users")
         .select("full_name")
         .eq("id", user?.id)
         .single();
 
-    // Get stats
     const { count: totalMeetings } = await supabase
         .from("meetings")
         .select("*", { count: "exact", head: true })
@@ -47,41 +45,38 @@ export default async function DashboardPage() {
         .eq("status", "confirmed")
         .gte("start_time", new Date().toISOString());
 
-    // Get recent meetings (recorded)
     const { data: recentMeetings } = await supabase
         .from("meetings")
         .select(`
-      id,
-      title,
-      meeting_provider,
-      status,
-      scheduled_start,
-      actual_start,
-      duration_seconds,
-      created_at
-    `)
+            id,
+            title,
+            meeting_provider,
+            status,
+            scheduled_start,
+            actual_start,
+            duration_seconds,
+            created_at
+        `)
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false })
         .limit(5);
 
-    // Get upcoming calendar events
     const { data: upcomingEvents } = await supabase
         .from("calendar_events")
         .select(`
-      id,
-      title,
-      meeting_provider,
-      meeting_url,
-      start_time,
-      should_record
-    `)
+            id,
+            title,
+            meeting_provider,
+            meeting_url,
+            start_time,
+            should_record
+        `)
         .eq("user_id", user?.id)
         .eq("status", "confirmed")
         .gte("start_time", new Date().toISOString())
         .order("start_time", { ascending: true })
         .limit(5);
 
-    // Get connected calendars
     const { data: calendars } = await supabase
         .from("connected_calendars")
         .select("id, calendar_name, provider, is_active")
@@ -90,96 +85,93 @@ export default async function DashboardPage() {
     const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
     const hasCalendar = calendars && calendars.length > 0;
 
-    const stats = [
-        {
-            label: "Total de Reuniões",
-            value: totalMeetings || 0,
-            icon: <Video className="h-5 w-5" />,
-            color: "text-primary",
-            bgColor: "bg-primary/10",
-        },
-        {
-            label: "Gravadas",
-            value: completedMeetings || 0,
-            icon: <Play className="h-5 w-5" />,
-            color: "text-success",
-            bgColor: "bg-success/10",
-        },
-        {
-            label: "Agendadas",
-            value: scheduledMeetings || 0,
-            icon: <Clock className="h-5 w-5" />,
-            color: "text-info",
-            bgColor: "bg-info/10",
-        },
-    ];
-
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold">Olá, {firstName}! 👋</h1>
+                <h1 className="text-3xl text-balance">
+                    Bom dia, {firstName}
+                </h1>
                 <p className="text-muted-foreground mt-1">
-                    Aqui está um resumo das suas reuniões.
+                    Aqui está o resumo das suas reuniões.
                 </p>
             </div>
 
             {/* Calendar Connection Warning */}
             {!hasCalendar && (
-                <Card className="border-warning/50 bg-warning/5">
-                    <CardContent className="flex items-center justify-between py-4">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-warning/20 flex items-center justify-center">
-                                <CalendarDays className="h-5 w-5 text-warning" />
-                            </div>
-                            <div>
-                                <p className="font-medium">Calendário não conectado</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Conecte seu Google Calendar para detectar reuniões automaticamente.
-                                </p>
-                            </div>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-warning/30 bg-warning/5">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-md bg-warning/10 flex items-center justify-center">
+                            <CalendarDays className="h-4 w-4 text-warning" />
                         </div>
-                        <Link href="/onboarding">
-                            <Button size="sm">
-                                Conectar
-                                <ArrowRight className="h-4 w-4 ml-1" />
-                            </Button>
-                        </Link>
-                    </CardContent>
-                </Card>
+                        <div>
+                            <p className="text-sm font-medium">Calendário não conectado</p>
+                            <p className="text-xs text-muted-foreground">
+                                Conecte seu Google Calendar para detectar reuniões.
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/onboarding">
+                        <Button size="sm">
+                            Conectar
+                        </Button>
+                    </Link>
+                </div>
             )}
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {stats.map((stat) => (
-                    <Card key={stat.label} className="border-border/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
-                                </div>
-                                <div className={`h-12 w-12 rounded-xl ${stat.bgColor} flex items-center justify-center ${stat.color}`}>
-                                    {stat.icon}
-                                </div>
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total de reuniões</p>
+                                <p className="text-3xl font-display font-semibold mt-1">{totalMeetings || 0}</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                                <Video className="h-4 w-4 text-primary" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Gravadas</p>
+                                <p className="text-3xl font-display font-semibold mt-1">{completedMeetings || 0}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-md bg-success/10 flex items-center justify-center">
+                                <Play className="h-4 w-4 text-success" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Agendadas</p>
+                                <p className="text-3xl font-display font-semibold mt-1">{scheduledMeetings || 0}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-md bg-info/10 flex items-center justify-center">
+                                <Clock className="h-4 w-4 text-info" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Quick Actions Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Join Meeting Card */}
                 <JoinMeetingCard />
 
-                {/* Recent Meetings Preview */}
-                <Card className="border-border/50">
+                <Card>
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                            <CardTitle className="text-base">Próximas Reuniões</CardTitle>
+                            <CardTitle className="text-base font-medium">Próximas reuniões</CardTitle>
                             <Link href="/dashboard/meetings">
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" className="text-xs">
                                     Ver todas
                                     <ArrowRight className="h-3 w-3 ml-1" />
                                 </Button>
@@ -188,17 +180,17 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {upcomingEvents && upcomingEvents.length > 0 ? (
-                            <div className="space-y-2">
-                                {upcomingEvents.slice(0, 3).map((event) => (
+                            <div className="space-y-1">
+                                {upcomingEvents.slice(0, 4).map((event) => (
                                     <div
                                         key={event.id}
-                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+                                        className="flex items-center gap-3 p-2.5 rounded-md hover:bg-accent transition-colors"
                                     >
-                                        <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${event.should_record ? "bg-info/20 text-info" : "bg-muted text-muted-foreground"}`}>
-                                            <Clock className="h-4 w-4" />
+                                        <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm truncate">{event.title}</p>
+                                            <p className="text-sm font-medium truncate">{event.title}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 {event.start_time
                                                     ? new Date(event.start_time).toLocaleString("pt-BR", {
@@ -208,15 +200,19 @@ export default async function DashboardPage() {
                                                         minute: "2-digit",
                                                     })
                                                     : "Sem data"}
-                                                {!event.should_record && " • Não gravável"}
                                             </p>
                                         </div>
+                                        {event.should_record && (
+                                            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center">
+                                                <Mic className="h-2.5 w-2.5 text-primary" />
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-6">
-                                <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <div className="text-center py-8">
+                                <Calendar className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
                                 <p className="text-sm text-muted-foreground">
                                     Nenhuma reunião agendada
                                 </p>
@@ -227,40 +223,46 @@ export default async function DashboardPage() {
             </div>
 
             {/* Recent Meetings */}
-            <Card className="border-border/50">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                        <CardTitle>Reuniões Recentes</CardTitle>
-                        <CardDescription>Suas últimas reuniões gravadas e agendadas</CardDescription>
+                        <CardTitle className="text-base font-medium">Reuniões recentes</CardTitle>
+                        <CardDescription>Últimas gravações e transcrições</CardDescription>
                     </div>
                     <Link href="/dashboard/meetings">
                         <Button variant="outline" size="sm">
                             Ver todas
-                            <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
                     </Link>
                 </CardHeader>
                 <CardContent>
                     {recentMeetings && recentMeetings.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {recentMeetings.map((meeting) => (
                                 <Link
                                     key={meeting.id}
                                     href={`/dashboard/meetings/${meeting.id}`}
-                                    className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                                    className="flex items-center justify-between p-3 rounded-md hover:bg-accent transition-colors group"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${meeting.status === "completed"
-                                            ? "bg-success/20 text-success"
-                                            : meeting.status === "recording"
-                                                ? "bg-destructive/20 text-destructive"
-                                                : "bg-info/20 text-info"
-                                            }`}>
-                                            <Video className="h-5 w-5" />
+                                    <div className="flex items-center gap-3">
+                                        <div className={`h-9 w-9 rounded-md flex items-center justify-center ${
+                                            meeting.status === "completed"
+                                                ? "bg-success/10"
+                                                : meeting.status === "recording"
+                                                    ? "bg-destructive/10"
+                                                    : "bg-info/10"
+                                        }`}>
+                                            <Video className={`h-4 w-4 ${
+                                                meeting.status === "completed"
+                                                    ? "text-success"
+                                                    : meeting.status === "recording"
+                                                        ? "text-destructive"
+                                                        : "text-info"
+                                            }`} />
                                         </div>
                                         <div>
-                                            <p className="font-medium">{meeting.title}</p>
-                                            <p className="text-sm text-muted-foreground">
+                                            <p className="text-sm font-medium">{meeting.title}</p>
+                                            <p className="text-xs text-muted-foreground">
                                                 {meeting.scheduled_start
                                                     ? new Date(meeting.scheduled_start).toLocaleDateString("pt-BR", {
                                                         day: "numeric",
@@ -268,40 +270,37 @@ export default async function DashboardPage() {
                                                         hour: "2-digit",
                                                         minute: "2-digit",
                                                     })
-                                                    : "Sem data"
-                                                }
+                                                    : "Sem data"}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className={`text-xs px-2 py-1 rounded-full ${meeting.status === "completed"
-                                            ? "bg-success/20 text-success"
-                                            : meeting.status === "recording"
-                                                ? "bg-destructive/20 text-destructive"
-                                                : meeting.status === "scheduled"
-                                                    ? "bg-info/20 text-info"
-                                                    : "bg-muted text-muted-foreground"
-                                            }`}>
+                                        <Badge variant={
+                                            meeting.status === "completed" ? "completed"
+                                                : meeting.status === "recording" ? "recording"
+                                                    : meeting.status === "scheduled" ? "scheduled"
+                                                        : "default"
+                                        }>
                                             {meeting.status === "completed" ? "Concluída"
                                                 : meeting.status === "recording" ? "Gravando"
                                                     : meeting.status === "scheduled" ? "Agendada"
                                                         : meeting.status}
-                                        </span>
-                                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                        </Badge>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 </Link>
                             ))}
                         </div>
                     ) : (
                         <div className="text-center py-12">
-                            <div className="h-16 w-16 rounded-2xl bg-secondary mx-auto flex items-center justify-center mb-4">
-                                <Video className="h-8 w-8 text-muted-foreground" />
+                            <div className="h-12 w-12 rounded-lg bg-muted mx-auto flex items-center justify-center mb-3">
+                                <Video className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            <h3 className="font-medium mb-1">Nenhuma reunião ainda</h3>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm font-medium mb-1">Nenhuma reunião ainda</p>
+                            <p className="text-xs text-muted-foreground">
                                 {hasCalendar
                                     ? "Suas reuniões aparecerão aqui quando forem detectadas."
-                                    : "Conecte seu calendário para começar a gravar reuniões."}
+                                    : "Conecte seu calendário para começar a gravar."}
                             </p>
                         </div>
                     )}
