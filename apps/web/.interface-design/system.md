@@ -52,14 +52,14 @@ Meeting Assistant (RKJ.AI) - Assistente de reuniões com gravação e transcriç
 
 - Cards usam `border border-border bg-card`
 - Sem sombras dramáticas
-- Hover states mudam borda para `border-cream-400`
+- Hover states mudam para `bg-accent/50`
 
 ## Spacing
 
 Base: 4px (Tailwind default)
-- Padding em cards: `p-6`
-- Gap entre seções: `space-y-8`
-- Gap entre items: `space-y-2` ou `space-y-1`
+- Padding em cards: `p-4` a `p-6`
+- Gap entre seções: `space-y-6` a `space-y-8`
+- Gap entre items de lista: `divide-y divide-border`
 
 ## Border Radius
 
@@ -68,6 +68,37 @@ Refinado, não muito arredondado:
 - `--radius`: 0.5rem (8px) - buttons, inputs
 - `--radius-lg`: 0.75rem (12px) - cards
 - `--radius-xl`: 1rem (16px) - modals
+
+## Layout Patterns
+
+### Dashboard (Briefing Hero)
+- Header com saudação + stats inline (não em cards separados)
+- Próxima reunião como hero card com timeline-ribbon no topo
+- Grid 3:2 (conteúdo principal : painel lateral)
+- Listas usam `divide-y` em vez de cards separados
+
+### Lista de Reuniões (Dense Table)
+- Agrupamento por período (Hoje, Ontem, Esta semana, Mês)
+- Tabela densa com colunas: Status | Título | Horário | Duração | Participantes
+- Headers de grupo com linha separadora: `texto --- count`
+- Hover row com `bg-accent/50`
+
+### Meeting Detail (Side-by-Side)
+- Grid 1:1 em desktop (video | transcrição)
+- Transcrição com altura fixa e scroll interno
+- Segmentos com avatar + timestamp + texto
+- Footer com ação de copiar
+
+### Settings (Sections)
+- Seções com header uppercase muted
+- Cards com `divide-y` para items relacionados
+- Largura máxima `max-w-2xl` para legibilidade
+
+### Sidebar
+- Largura: `w-56` (compacta)
+- Logo menor: `h-7 w-7`
+- Nav items com `space-y-0.5`
+- Footer com theme toggle + logout
 
 ## Components
 
@@ -79,17 +110,15 @@ Refinado, não muito arredondado:
 ### Card
 - `rounded-lg border border-border bg-card`
 - Sem variantes de elevação
-- Hover com `hover:border-cream-400`
+- Headers com `border-b` quando necessário
 
 ### Badge
 - `rounded-md px-2 py-0.5 text-xs`
 - Cores semânticas: completed (sage), recording (rose pulse), scheduled (slate), processing (amber pulse)
 
-### Sidebar
-- Largura: `w-60`
-- Logo: Mic icon + "RKJ.AI" em Fraunces
-- Nav items: texto com ícones line-only, 4px
-- Active state: `bg-primary/10 text-primary`
+### Avatar
+- Tamanhos: xs (h-6), sm (h-8), md (h-10), lg (h-12)
+- Fallback com iniciais em uppercase
 
 ## Signature Element
 
@@ -99,6 +128,8 @@ Refinado, não muito arredondado:
 --ribbon-gradient: linear-gradient(90deg, var(--terracotta-400), var(--amber-400));
 --ribbon-glow: 0 0 12px hsla(20, 60%, 55%, 0.25);
 ```
+
+Uso: No topo do card de próxima reunião, em indicadores de gravação ativa.
 
 ## Animation
 
@@ -111,9 +142,10 @@ Refinado, não muito arredondado:
 
 Light mode como padrão (produtos profissionais tipicamente usam light mode durante horário comercial).
 
-## Key Patterns
+## Key Anti-Patterns (Evitar)
 
-1. **Stats Cards:** Número grande em Fraunces + ícone em background colorido sutil
-2. **List Items:** Hover com `bg-accent`, ícone à esquerda, badge à direita
-3. **Empty States:** Ícone centralizado + texto muted
-4. **Alerts:** Border colorida sutil + background 5% da cor
+1. **Grid de stat cards genéricos** — use stats inline no header
+2. **Cards empilhados para listas** — use `divide-y` dentro de um card
+3. **Ícones decorativos em títulos de seção** — use headers uppercase muted
+4. **Múltiplos níveis de cards aninhados** — mantenha flat
+5. **Botões "Ver todas" óbvios** — use links sutis com chevron

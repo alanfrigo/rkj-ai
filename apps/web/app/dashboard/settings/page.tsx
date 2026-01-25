@@ -2,18 +2,13 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import {
-    User,
     Calendar,
     Bell,
-    Shield,
     Trash2,
-    ExternalLink
+    Check,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { LabeledSwitch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/ui/avatar";
 
@@ -34,28 +29,19 @@ export default async function SettingsPage() {
         .eq("user_id", user?.id);
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="animate-fade-in max-w-2xl">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold">Configurações</h1>
-                <p className="text-muted-foreground mt-1">
-                    Gerencie sua conta e preferências
-                </p>
-            </div>
+            <header className="mb-8">
+                <h1 className="text-2xl font-display">Configurações</h1>
+            </header>
 
-            <div className="grid gap-6">
-                {/* Profile */}
-                <Card className="border-border/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <User className="h-5 w-5" />
-                            Perfil
-                        </CardTitle>
-                        <CardDescription>
-                            Suas informações pessoais
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
+            <div className="space-y-8">
+                {/* Profile Section */}
+                <section>
+                    <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                        Perfil
+                    </h2>
+                    <div className="rounded-lg border border-border bg-card p-5 space-y-5">
                         <div className="flex items-center gap-4">
                             <UserAvatar
                                 name={profile?.full_name || user?.email || "User"}
@@ -66,120 +52,113 @@ export default async function SettingsPage() {
                                 <p className="text-sm text-muted-foreground">{user?.email}</p>
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Nome</Label>
+                            <div className="space-y-1.5">
+                                <label htmlFor="name" className="text-sm text-muted-foreground">
+                                    Nome
+                                </label>
                                 <Input id="name" defaultValue={profile?.full_name || ""} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" value={user?.email || ""} disabled />
+                            <div className="space-y-1.5">
+                                <label htmlFor="email" className="text-sm text-muted-foreground">
+                                    Email
+                                </label>
+                                <Input id="email" value={user?.email || ""} disabled className="bg-muted/50" />
                             </div>
                         </div>
-                        <Button>Salvar alterações</Button>
-                    </CardContent>
-                </Card>
 
-                {/* Connected Calendars */}
-                <Card className="border-border/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Calendar className="h-5 w-5" />
-                            Calendários Conectados
-                        </CardTitle>
-                        <CardDescription>
-                            Gerencie os calendários sincronizados
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                        <div className="pt-2">
+                            <Button size="sm">Salvar alterações</Button>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Calendars Section */}
+                <section>
+                    <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                        Calendários conectados
+                    </h2>
+                    <div className="rounded-lg border border-border bg-card">
                         {calendars && calendars.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="divide-y divide-border">
                                 {calendars.map((calendar) => (
                                     <div
                                         key={calendar.id}
-                                        className="flex items-center justify-between p-4 rounded-xl bg-secondary/30"
+                                        className="flex items-center justify-between p-4"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-success/20 flex items-center justify-center">
-                                                <Calendar className="h-5 w-5 text-success" />
+                                            <div className="h-9 w-9 rounded-lg bg-success/10 flex items-center justify-center">
+                                                <Calendar className="h-4 w-4 text-success" />
                                             </div>
                                             <div>
-                                                <p className="font-medium">{calendar.calendar_name || "Google Calendar"}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-sm text-muted-foreground capitalize">
-                                                        {calendar.provider}
-                                                    </span>
-                                                    <Badge variant={calendar.is_active ? "success" : "secondary"}>
-                                                        {calendar.is_active ? "Ativo" : "Inativo"}
-                                                    </Badge>
-                                                </div>
+                                                <p className="text-sm font-medium">
+                                                    {calendar.calendar_name || "Google Calendar"}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                                    <span className="capitalize">{calendar.provider}</span>
+                                                    {calendar.is_active && (
+                                                        <>
+                                                            <span className="h-1 w-1 rounded-full bg-success" />
+                                                            <span className="text-success">Ativo</span>
+                                                        </>
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8">
-                                <div className="h-12 w-12 rounded-xl bg-muted mx-auto flex items-center justify-center mb-4">
-                                    <Calendar className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                                <p className="text-muted-foreground mb-4">
+                            <div className="p-8 text-center">
+                                <Calendar className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                                <p className="text-sm text-muted-foreground mb-4">
                                     Nenhum calendário conectado
                                 </p>
-                                <Button>
+                                <Button size="sm">
                                     Conectar Google Calendar
                                 </Button>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </section>
 
-                {/* Notifications */}
-                <Card className="border-border/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Bell className="h-5 w-5" />
-                            Notificações
-                        </CardTitle>
-                        <CardDescription>
-                            Configure como você recebe notificações
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-6">
+                {/* Notifications Section */}
+                <section>
+                    <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+                        Notificações
+                    </h2>
+                    <div className="rounded-lg border border-border bg-card divide-y divide-border">
+                        <div className="p-4">
                             <LabeledSwitch
                                 label="Notificações por email"
                                 description="Receba emails quando reuniões forem gravadas"
                                 defaultChecked={profile?.settings?.email_notifications ?? true}
                             />
+                        </div>
+                        <div className="p-4">
                             <LabeledSwitch
                                 label="Gravação automática"
-                                description="Gravar automaticamente todas as reuniões"
+                                description="Gravar automaticamente todas as reuniões detectadas"
                                 defaultChecked={profile?.settings?.auto_record ?? true}
                             />
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </section>
 
                 {/* Danger Zone */}
-                <Card className="border-destructive/30">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-destructive">
-                            <Shield className="h-5 w-5" />
-                            Zona de Perigo
-                        </CardTitle>
-                        <CardDescription>
-                            Ações irreversíveis
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <section>
+                    <h2 className="text-xs font-medium text-destructive uppercase tracking-wide mb-4">
+                        Zona de perigo
+                    </h2>
+                    <div className="rounded-lg border border-destructive/30 bg-card p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="font-medium">Excluir conta</p>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-sm font-medium">Excluir conta</p>
+                                <p className="text-xs text-muted-foreground">
                                     Remover permanentemente sua conta e todos os dados
                                 </p>
                             </div>
@@ -187,8 +166,8 @@ export default async function SettingsPage() {
                                 Excluir conta
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </section>
             </div>
         </div>
     );

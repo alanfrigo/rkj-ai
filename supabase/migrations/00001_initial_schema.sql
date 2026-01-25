@@ -93,7 +93,7 @@ CREATE TABLE public.calendar_events (
     -- Timing
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    timezone TEXT DEFAULT 'UTC',
+    timezone TEXT DEFAULT 'America/Sao_Paulo',
     is_all_day BOOLEAN DEFAULT false,
     -- Meeting link detection
     meeting_url TEXT,

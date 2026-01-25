@@ -1,39 +1,84 @@
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
-import { Video, Search, Filter, Calendar } from "lucide-react";
+import { Video, Search, Clock, Users, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+type MeetingWithEvent = {
+    id: string;
+    title: string;
+    meeting_provider: string | null;
+    meeting_url: string | null;
+    status: string;
+    scheduled_start: string | null;
+    actual_start: string | null;
+    actual_end: string | null;
+    duration_seconds: number | null;
+    participant_count: number;
+    created_at: string;
+    is_upcoming_event: boolean;
+};
+
+function groupMeetingsByDate(meetings: MeetingWithEvent[]) {
+    const groups: { [key: string]: MeetingWithEvent[] } = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    meetings.forEach((meeting) => {
+        const date = new Date(meeting.scheduled_start || meeting.created_at);
+        date.setHours(0, 0, 0, 0);
+
+        let groupKey: string;
+        if (date >= today) {
+            groupKey = "Hoje";
+        } else if (date >= yesterday) {
+            groupKey = "Ontem";
+        } else if (date >= weekAgo) {
+            groupKey = "Esta semana";
+        } else {
+            groupKey = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+            groupKey = groupKey.charAt(0).toUpperCase() + groupKey.slice(1);
+        }
+
+        if (!groups[groupKey]) {
+            groups[groupKey] = [];
+        }
+        groups[groupKey].push(meeting);
+    });
+
+    return groups;
+}
 
 export default async function MeetingsPage() {
     const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get all recorded meetings
     const { data: meetings } = await supabase
         .from("meetings")
         .select(`
-      id,
-      title,
-      meeting_provider,
-      meeting_url,
-      status,
-      scheduled_start,
-      actual_start,
-      actual_end,
-      duration_seconds,
-      participant_count,
-      calendar_event_id,
-      created_at
-    `)
+            id,
+            title,
+            meeting_provider,
+            meeting_url,
+            status,
+            scheduled_start,
+            actual_start,
+            actual_end,
+            duration_seconds,
+            participant_count,
+            calendar_event_id,
+            created_at
+        `)
         .eq("user_id", user?.id)
         .order("created_at", { ascending: false });
 
-    // Get upcoming calendar events
     const { data: calendarEvents } = await supabase
         .from("calendar_events")
         .select("*")
@@ -41,7 +86,6 @@ export default async function MeetingsPage() {
         .eq("status", "confirmed")
         .order("start_time", { ascending: true });
 
-    // Merge and filter
     const meetingCalendarIds = new Set(meetings?.map(m => m.calendar_event_id).filter(Boolean));
 
     const upcomingMeetings = (calendarEvents || [])
@@ -57,12 +101,11 @@ export default async function MeetingsPage() {
             actual_end: null,
             duration_seconds: null,
             participant_count: 0,
-            calendar_event_id: event.id,
             created_at: event.created_at,
             is_upcoming_event: true
         }));
 
-    const allMeetings = [
+    const allMeetings: MeetingWithEvent[] = [
         ...(meetings || []).map(m => ({ ...m, is_upcoming_event: false })),
         ...upcomingMeetings
     ].sort((a, b) => {
@@ -71,14 +114,22 @@ export default async function MeetingsPage() {
         return dateB - dateA;
     });
 
+    const groupedMeetings = groupMeetingsByDate(allMeetings);
+
     const formatDuration = (seconds: number | null) => {
-        if (!seconds) return "--";
+        if (!seconds) return "—";
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
-        if (hours > 0) {
-            return `${hours}h ${minutes}m`;
-        }
+        if (hours > 0) return `${hours}h ${minutes}m`;
         return `${minutes}m`;
+    };
+
+    const formatTime = (dateStr: string | null) => {
+        if (!dateStr) return "—";
+        return new Date(dateStr).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     };
 
     const getStatusVariant = (status: string): "completed" | "recording" | "scheduled" | "processing" | "failed" | "default" => {
@@ -107,117 +158,155 @@ export default async function MeetingsPage() {
         }
     };
 
-    return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">Reuniões</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Todas as suas reuniões gravadas e agendadas
-                    </p>
-                </div>
-            </div>
+    const totalCount = allMeetings.length;
 
-            {/* Search and Filter */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
+    return (
+        <div className="animate-fade-in">
+            {/* Header */}
+            <header className="mb-6">
+                <div className="flex items-end justify-between gap-4 mb-4">
+                    <h1 className="text-2xl font-display">Reuniões</h1>
+                    <span className="text-sm text-muted-foreground">
+                        {totalCount} {totalCount === 1 ? "reunião" : "reuniões"}
+                    </span>
+                </div>
+
+                {/* Search */}
+                <div className="relative max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar reuniões..."
-                        className="pl-10"
+                        className="pl-10 text-sm"
                     />
                 </div>
-                <Button variant="outline" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filtrar
-                </Button>
-            </div>
+            </header>
 
             {/* Meetings List */}
             {allMeetings.length > 0 ? (
-                <div className="grid gap-4">
-                    {allMeetings.map((meeting) => {
-                        const href = meeting.is_upcoming_event ? "#" : `/dashboard/meetings/${meeting.id}`;
-                        const cardContent = (
-                            <Card className={`border-border/50 transition-colors ${!meeting.is_upcoming_event ? "hover:border-border" : ""}`}>
-                                <CardContent className="p-4 sm:p-6">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="flex items-start sm:items-center gap-4">
-                                            <div className={`h-12 w-12 rounded-xl flex-shrink-0 flex items-center justify-center ${meeting.status === "completed"
-                                                ? "bg-success/20 text-success"
-                                                : meeting.status === "recording"
-                                                    ? "bg-destructive/20 text-destructive"
-                                                    : meeting.status === "scheduled" && meeting.meeting_url
-                                                        ? "bg-info/20 text-info"
-                                                        : "bg-muted text-muted-foreground"
-                                                }`}>
-                                                <Video className="h-6 w-6" />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <h3 className="font-semibold text-lg">{meeting.title}</h3>
-                                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar className="h-4 w-4" />
-                                                        {meeting.scheduled_start
-                                                            ? new Date(meeting.scheduled_start).toLocaleDateString("pt-BR", {
-                                                                day: "numeric",
-                                                                month: "short",
-                                                                year: "numeric",
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
-                                                            })
-                                                            : "Sem data"}
-                                                    </span>
-                                                    {meeting.duration_seconds && (
-                                                        <span>• {formatDuration(meeting.duration_seconds)}</span>
-                                                    )}
-                                                    {meeting.participant_count > 0 && (
-                                                        <span>• {meeting.participant_count} participantes</span>
-                                                    )}
-                                                    {meeting.is_upcoming_event && !meeting.meeting_url && (
-                                                        <span className="bg-warning/10 text-warning px-1.5 py-0.5 rounded text-[10px] uppercase font-bold">Sem link</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                <div className="space-y-6">
+                    {Object.entries(groupedMeetings).map(([groupName, groupMeetings]) => (
+                        <section key={groupName}>
+                            <div className="flex items-center gap-3 mb-2">
+                                <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                    {groupName}
+                                </h2>
+                                <div className="flex-1 h-px bg-border" />
+                                <span className="text-xs text-muted-foreground">
+                                    {groupMeetings.length}
+                                </span>
+                            </div>
 
-                                        <div className="flex items-center gap-3 ml-16 sm:ml-0">
-                                            <Badge variant={getStatusVariant(meeting.status)}>
-                                                {getStatusLabel(meeting.status)}
-                                            </Badge>
-                                            <span className="text-xs text-muted-foreground capitalize">
-                                                {meeting.meeting_provider?.replace("_", " ") || "calendário"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
+                            <div className="rounded-lg border border-border bg-card overflow-hidden">
+                                <table className="w-full">
+                                    <thead className="sr-only">
+                                        <tr>
+                                            <th>Status</th>
+                                            <th>Título</th>
+                                            <th>Horário</th>
+                                            <th>Duração</th>
+                                            <th>Participantes</th>
+                                            <th>Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {groupMeetings.map((meeting) => {
+                                            const isClickable = !meeting.is_upcoming_event;
 
-                        if (meeting.is_upcoming_event) {
-                            return <div key={meeting.id}>{cardContent}</div>;
-                        }
+                                            const rowContent = (
+                                                <>
+                                                    {/* Status */}
+                                                    <td className="w-24 px-4 py-3">
+                                                        <Badge
+                                                            variant={getStatusVariant(meeting.status)}
+                                                            className="text-[10px]"
+                                                        >
+                                                            {getStatusLabel(meeting.status)}
+                                                        </Badge>
+                                                    </td>
 
-                        return (
-                            <Link key={meeting.id} href={href}>
-                                {cardContent}
-                            </Link>
-                        );
-                    })}
+                                                    {/* Title + Provider */}
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className={`text-sm font-medium truncate ${isClickable ? "group-hover:text-primary transition-colors" : ""}`}>
+                                                                    {meeting.title}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground capitalize">
+                                                                    {meeting.meeting_provider?.replace("_", " ") || "calendário"}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Time */}
+                                                    <td className="w-20 px-4 py-3 hidden sm:table-cell">
+                                                        <p className="text-sm font-mono text-muted-foreground">
+                                                            {formatTime(meeting.scheduled_start)}
+                                                        </p>
+                                                    </td>
+
+                                                    {/* Duration */}
+                                                    <td className="w-20 px-4 py-3 hidden md:table-cell">
+                                                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                            <Clock className="h-3 w-3" />
+                                                            <span>{formatDuration(meeting.duration_seconds)}</span>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Participants */}
+                                                    <td className="w-20 px-4 py-3 hidden lg:table-cell">
+                                                        {meeting.participant_count > 0 ? (
+                                                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                                <Users className="h-3 w-3" />
+                                                                <span>{meeting.participant_count}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-muted-foreground">—</span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Arrow */}
+                                                    <td className="w-10 px-4 py-3 text-right">
+                                                        {isClickable && (
+                                                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block" />
+                                                        )}
+                                                    </td>
+                                                </>
+                                            );
+
+                                            if (isClickable) {
+                                                return (
+                                                    <tr key={meeting.id} className="group hover:bg-accent/50 transition-colors">
+                                                        <Link
+                                                            href={`/dashboard/meetings/${meeting.id}`}
+                                                            className="contents"
+                                                        >
+                                                            {rowContent}
+                                                        </Link>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return (
+                                                <tr key={meeting.id} className="group">
+                                                    {rowContent}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    ))}
                 </div>
             ) : (
-                <Card className="border-border/50">
-                    <CardContent className="py-16 text-center">
-                        <div className="h-20 w-20 rounded-2xl bg-secondary mx-auto flex items-center justify-center mb-6">
-                            <Video className="h-10 w-10 text-muted-foreground" />
-                        </div>
-                        <h3 className="text-xl font-semibold mb-2">Nenhuma reunião encontrada</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto">
-                            Quando você tiver reuniões gravadas ou agendadas, elas aparecerão aqui.
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="rounded-lg border border-border bg-card py-16 text-center">
+                    <Video className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-lg font-medium mb-1">Nenhuma reunião</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        Suas reuniões gravadas e agendadas aparecerão aqui.
+                    </p>
+                </div>
             )}
         </div>
     );

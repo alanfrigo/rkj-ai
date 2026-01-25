@@ -9,8 +9,8 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-background">
             <Sidebar />
             {/* Main content area with sidebar offset */}
-            <main className="lg:pl-64">
-                <div className="container max-w-6xl mx-auto px-4 py-8 pt-20 lg:pt-8">
+            <main className="lg:pl-56">
+                <div className="max-w-5xl mx-auto px-6 py-6 pt-16 lg:pt-6">
                     {children}
                 </div>
             </main>

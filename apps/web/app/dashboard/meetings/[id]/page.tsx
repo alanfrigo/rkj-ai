@@ -8,17 +8,15 @@ import {
     Clock,
     Users,
     FileText,
-    Play,
     ArrowLeft,
     Download,
-    ExternalLink
+    ExternalLink,
+    Copy,
 } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MeetingPageProps {
     params: Promise<{ id: string }>;
@@ -30,17 +28,16 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Get meeting details
     const { data: meeting } = await supabase
         .from("meetings")
         .select(`
-      *,
-      recordings (*),
-      transcriptions (
-        *,
-        transcription_segments (*)
-      )
-    `)
+            *,
+            recordings (*),
+            transcriptions (
+                *,
+                transcription_segments (*)
+            )
+        `)
         .eq("id", id)
         .eq("user_id", user?.id)
         .single();
@@ -50,29 +47,40 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
     }
 
     const formatDuration = (seconds: number | null) => {
-        if (!seconds) return "--";
+        if (!seconds) return "—";
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        if (hours > 0) {
-            return `${hours}h ${minutes}m ${secs}s`;
-        }
+        if (hours > 0) return `${hours}h ${minutes}m`;
         return `${minutes}m ${secs}s`;
+    };
+
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return "—";
+        return new Date(dateStr).toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        });
+    };
+
+    const formatTime = (dateStr: string | null) => {
+        if (!dateStr) return "";
+        return new Date(dateStr).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     };
 
     const getStatusVariant = (status: string): "completed" | "recording" | "scheduled" | "processing" | "default" => {
         switch (status) {
-            case "completed":
-                return "completed";
-            case "recording":
-                return "recording";
-            case "scheduled":
-                return "scheduled";
+            case "completed": return "completed";
+            case "recording": return "recording";
+            case "scheduled": return "scheduled";
             case "transcribing":
-            case "processing":
-                return "processing";
-            default:
-                return "default";
+            case "processing": return "processing";
+            default: return "default";
         }
     };
 
@@ -86,90 +94,96 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
             default: return status;
         }
     };
-    const recording = meeting.recordings?.[0];
 
-    // Fallback logic for video URL if storage_url is missing but storage_path exists
+    const recording = meeting.recordings?.[0];
     const videoUrl = recording?.storage_url || (
         recording?.storage_path && process.env.NEXT_PUBLIC_R2_URL
             ? `${process.env.NEXT_PUBLIC_R2_URL}/${recording.storage_path}`
             : null
     );
 
-    // Sort transcriptions to get the most relevant one (completed first, then by date)
     const transcription = meeting.transcriptions?.sort((a: any, b: any) => {
-        // Prioritize completed
         if (a.status === 'completed' && b.status !== 'completed') return -1;
         if (a.status !== 'completed' && b.status === 'completed') return 1;
-
-        // Then by creation date (newest first)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     })?.[0];
 
+    const segments = transcription?.transcription_segments?.sort(
+        (a: any, b: any) => a.segment_index - b.segment_index
+    ) || [];
+
     return (
-        <div className="space-y-6 animate-fade-in">
-            {/* Back Button */}
-            <Link href="/dashboard/meetings">
-                <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Voltar para reuniões
-                </Button>
-            </Link>
-
+        <div className="animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl sm:text-3xl font-bold">{meeting.title}</h1>
-                        <Badge variant={getStatusVariant(meeting.status)}>
-                            {getStatusLabel(meeting.status)}
-                        </Badge>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                            <Calendar className="h-4 w-4" />
-                            {meeting.scheduled_start
-                                ? new Date(meeting.scheduled_start).toLocaleDateString("pt-BR", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })
-                                : "Sem data agendada"}
-                        </span>
-                        {meeting.duration_seconds && (
+            <header className="mb-6">
+                <Link
+                    href="/dashboard/meetings"
+                    className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Reuniões
+                </Link>
+
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-display">{meeting.title}</h1>
+                            <Badge variant={getStatusVariant(meeting.status)}>
+                                {getStatusLabel(meeting.status)}
+                            </Badge>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1.5">
-                                <Clock className="h-4 w-4" />
-                                {formatDuration(meeting.duration_seconds)}
+                                <Calendar className="h-3.5 w-3.5" />
+                                {formatDate(meeting.scheduled_start)}
                             </span>
-                        )}
-                        {meeting.participant_count > 0 && (
-                            <span className="flex items-center gap-1.5">
-                                <Users className="h-4 w-4" />
-                                {meeting.participant_count} participantes
-                            </span>
-                        )}
+                            {meeting.scheduled_start && (
+                                <span className="font-mono">
+                                    {formatTime(meeting.scheduled_start)}
+                                </span>
+                            )}
+                            {meeting.duration_seconds && (
+                                <>
+                                    <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                                    <span className="flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {formatDuration(meeting.duration_seconds)}
+                                    </span>
+                                </>
+                            )}
+                            {meeting.participant_count > 0 && (
+                                <>
+                                    <span className="h-1 w-1 rounded-full bg-muted-foreground" />
+                                    <span className="flex items-center gap-1.5">
+                                        <Users className="h-3.5 w-3.5" />
+                                        {meeting.participant_count} participantes
+                                    </span>
+                                </>
+                            )}
+                        </div>
                     </div>
+
+                    {meeting.meeting_url && (
+                        <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm">
+                                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                                Link
+                            </Button>
+                        </a>
+                    )}
                 </div>
+            </header>
 
-                {meeting.meeting_url && (
-                    <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="gap-2">
-                            <ExternalLink className="h-4 w-4" />
-                            Link da reunião
-                        </Button>
-                    </a>
-                )}
-            </div>
+            {/* Main Content - Video + Transcription side by side */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Video Player */}
-                    <Card className="border-border/50">
-                        <CardContent className="p-0">
-                            {videoUrl ? (
-                                <div className="aspect-video bg-black rounded-t-xl overflow-hidden">
+                {/* Video Section */}
+                <section className="space-y-4">
+                    <div className="rounded-lg border border-border bg-card overflow-hidden">
+                        {videoUrl ? (
+                            <>
+                                <div className="aspect-video bg-black">
                                     <video
                                         src={videoUrl}
                                         controls
@@ -177,145 +191,168 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                                         poster={recording.thumbnail_url}
                                     />
                                 </div>
-                            ) : (
-                                <div className="aspect-video bg-secondary rounded-t-xl flex items-center justify-center">
-                                    <div className="text-center">
-                                        <div className="h-16 w-16 rounded-2xl bg-muted mx-auto flex items-center justify-center mb-4">
-                                            <Video className="h-8 w-8 text-muted-foreground" />
-                                        </div>
-                                        <p className="text-muted-foreground">
-                                            {meeting.status === "scheduled"
-                                                ? "A gravação começará quando a reunião iniciar"
-                                                : meeting.status === "recording"
-                                                    ? "Gravação em andamento..."
-                                                    : meeting.status === "processing"
-                                                        ? "Processando gravação..."
-                                                        : "Gravação não disponível"}
-                                        </p>
-                                    </div>
+                                <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">
+                                        {recording.format?.toUpperCase()} · {formatDuration(recording.duration_seconds)}
+                                    </span>
+                                    <a href={videoUrl} download>
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs">
+                                            <Download className="h-3 w-3 mr-1.5" />
+                                            Download
+                                        </Button>
+                                    </a>
                                 </div>
-                            )}
-                            {recording && (
-                                <div className="p-4 flex items-center justify-between border-t border-border">
-                                    <div className="text-sm text-muted-foreground">
-                                        {recording.format?.toUpperCase()} • {formatDuration(recording.duration_seconds)}
-                                    </div>
-                                    {videoUrl && (
-                                        <a href={videoUrl} download>
-                                            <Button variant="ghost" size="sm" className="gap-2">
-                                                <Download className="h-4 w-4" />
-                                                Download
-                                            </Button>
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Transcription */}
-                    <Card className="border-border/50">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <FileText className="h-5 w-5" />
-                                Transcrição
-                            </CardTitle>
-                            <CardDescription>
-                                {transcription
-                                    ? `${transcription.word_count || 0} palavras`
-                                    : "Transcrição não disponível"}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {transcription?.full_text ? (
-                                <div className="prose prose-invert prose-sm max-w-none">
-                                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                                        {transcription.full_text}
+                            </>
+                        ) : (
+                            <div className="aspect-video bg-muted flex items-center justify-center">
+                                <div className="text-center px-4">
+                                    <Video className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                                    <p className="text-sm text-muted-foreground">
+                                        {meeting.status === "scheduled"
+                                            ? "A gravação começará quando a reunião iniciar"
+                                            : meeting.status === "recording"
+                                                ? "Gravação em andamento..."
+                                                : meeting.status === "processing"
+                                                    ? "Processando gravação..."
+                                                    : "Gravação não disponível"}
                                     </p>
                                 </div>
-                            ) : transcription?.status === "processing" ? (
-                                <div className="text-center py-8">
-                                    <div className="h-12 w-12 rounded-xl bg-primary/20 mx-auto flex items-center justify-center mb-4 animate-pulse">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <p className="text-muted-foreground">Transcrição em andamento...</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Meeting Info (collapsed on desktop) */}
+                    <div className="xl:hidden rounded-lg border border-border bg-card p-4">
+                        <h3 className="text-sm font-medium mb-3">Informações</h3>
+                        <dl className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <dt className="text-muted-foreground">Plataforma</dt>
+                                <dd className="font-medium capitalize">{meeting.meeting_provider?.replace("_", " ") || "—"}</dd>
+                            </div>
+                            {meeting.actual_start && (
+                                <div>
+                                    <dt className="text-muted-foreground">Início real</dt>
+                                    <dd className="font-medium">{formatTime(meeting.actual_start)}</dd>
                                 </div>
-                            ) : (
-                                <div className="text-center py-8">
-                                    <div className="h-12 w-12 rounded-xl bg-muted mx-auto flex items-center justify-center mb-4">
-                                        <FileText className="h-6 w-6 text-muted-foreground" />
+                            )}
+                            {meeting.actual_end && (
+                                <div>
+                                    <dt className="text-muted-foreground">Fim</dt>
+                                    <dd className="font-medium">{formatTime(meeting.actual_end)}</dd>
+                                </div>
+                            )}
+                        </dl>
+                    </div>
+                </section>
+
+                {/* Transcription Section */}
+                <section className="rounded-lg border border-border bg-card flex flex-col min-h-[400px] xl:min-h-0 xl:h-[calc(100vh-220px)]">
+                    <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <h2 className="text-sm font-medium">Transcrição</h2>
+                        </div>
+                        {transcription?.word_count && (
+                            <span className="text-xs text-muted-foreground">
+                                {transcription.word_count.toLocaleString()} palavras
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto">
+                        {segments.length > 0 ? (
+                            <div className="divide-y divide-border">
+                                {segments.map((segment: any, index: number) => (
+                                    <div
+                                        key={segment.id || index}
+                                        className="px-4 py-3 hover:bg-accent/30 transition-colors"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            {segment.speaker_name && (
+                                                <UserAvatar name={segment.speaker_name} size="sm" />
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    {segment.speaker_name && (
+                                                        <span className="text-xs font-medium">
+                                                            {segment.speaker_name}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-muted-foreground font-mono">
+                                                        {Math.floor(segment.start_time_ms / 60000)}:{String(Math.floor((segment.start_time_ms % 60000) / 1000)).padStart(2, '0')}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm leading-relaxed">
+                                                    {segment.text}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="text-muted-foreground">
+                                ))}
+                            </div>
+                        ) : transcription?.full_text ? (
+                            <div className="p-4">
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                    {transcription.full_text}
+                                </p>
+                            </div>
+                        ) : transcription?.status === "processing" ? (
+                            <div className="flex items-center justify-center h-full p-8">
+                                <div className="text-center">
+                                    <div className="h-8 w-8 rounded-lg bg-primary/10 mx-auto flex items-center justify-center mb-3 animate-pulse">
+                                        <FileText className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        Transcrição em andamento...
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full p-8">
+                                <div className="text-center">
+                                    <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                                    <p className="text-sm text-muted-foreground">
                                         {meeting.status === "scheduled"
                                             ? "A transcrição será gerada após a reunião"
                                             : "Transcrição não disponível"}
                                     </p>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Meeting Info */}
-                    <Card className="border-border/50">
-                        <CardHeader>
-                            <CardTitle>Informações</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <p className="text-sm text-muted-foreground">Plataforma</p>
-                                <p className="font-medium capitalize">{meeting.meeting_provider?.replace("_", " ") || "Não especificada"}</p>
                             </div>
-                            {meeting.actual_start && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Iniciou em</p>
-                                    <p className="font-medium">
-                                        {new Date(meeting.actual_start).toLocaleString("pt-BR")}
-                                    </p>
-                                </div>
-                            )}
-                            {meeting.actual_end && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Terminou em</p>
-                                    <p className="font-medium">
-                                        {new Date(meeting.actual_end).toLocaleString("pt-BR")}
-                                    </p>
-                                </div>
-                            )}
-                            {meeting.bot_session_id && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">ID da Sessão</p>
-                                    <p className="font-mono text-xs">{meeting.bot_session_id}</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                        )}
+                    </div>
 
-                    {/* Participants */}
-                    {meeting.participants && Array.isArray(meeting.participants) && meeting.participants.length > 0 && (
-                        <Card className="border-border/50">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Users className="h-4 w-4" />
-                                    Participantes
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ul className="space-y-3">
-                                    {meeting.participants.map((participant: string, i: number) => (
-                                        <li key={i} className="flex items-center gap-3 text-sm">
-                                            <UserAvatar name={participant} size="sm" />
-                                            <span>{participant}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
+                    {/* Transcription footer with copy action */}
+                    {transcription?.full_text && (
+                        <div className="px-4 py-3 border-t border-border flex-shrink-0">
+                            <Button variant="ghost" size="sm" className="h-7 text-xs w-full">
+                                <Copy className="h-3 w-3 mr-1.5" />
+                                Copiar transcrição
+                            </Button>
+                        </div>
                     )}
-                </div>
+                </section>
             </div>
+
+            {/* Participants - Only if there are participants */}
+            {meeting.participants && Array.isArray(meeting.participants) && meeting.participants.length > 0 && (
+                <section className="mt-6 rounded-lg border border-border bg-card p-4">
+                    <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        Participantes
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {meeting.participants.map((participant: string, i: number) => (
+                            <div
+                                key={i}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-sm"
+                            >
+                                <UserAvatar name={participant} size="xs" />
+                                <span>{participant}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }

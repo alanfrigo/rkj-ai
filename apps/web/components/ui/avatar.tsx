@@ -60,7 +60,7 @@ function getInitials(name: string): string {
 interface UserAvatarProps extends React.ComponentPropsWithoutRef<typeof Avatar> {
   name?: string;
   src?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
 }
 
 const UserAvatar = React.forwardRef<
@@ -68,6 +68,7 @@ const UserAvatar = React.forwardRef<
   UserAvatarProps
 >(({ name, src, size = "md", className, ...props }, ref) => {
   const sizeClasses = {
+    xs: "h-6 w-6 text-[10px]",
     sm: "h-8 w-8 text-xs",
     md: "h-10 w-10 text-sm",
     lg: "h-12 w-12 text-base",
