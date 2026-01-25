@@ -50,9 +50,9 @@ class CalendarSync:
         """Sync calendars for all users with connected Google Calendar"""
         logger.info("Starting calendar sync for all users")
         
-        # Get all active users with Google refresh tokens
+        # Get all active users with Google refresh tokens and settings
         result = self.supabase.table('users')\
-            .select('id, email, google_refresh_token')\
+            .select('id, email, google_refresh_token, settings')\
             .not_.is_('google_refresh_token', 'null')\
             .execute()
         
@@ -61,6 +61,12 @@ class CalendarSync:
         
         for user in users:
             try:
+                # Check if user has auto sync enabled (default: True)
+                settings = user.get('settings') or {}
+                if not settings.get('auto_sync_calendar', True):
+                    logger.info(f"Skipping sync for user {user['id']} - auto sync disabled")
+                    continue
+                
                 await self.sync_user_calendar(user)
             except Exception as e:
                 logger.error(f"Error syncing calendar for user {user['id']}: {e}")
@@ -83,10 +89,10 @@ class CalendarSync:
         
         service = build('calendar', 'v3', credentials=credentials)
         
-        # Get events for next 24 hours
+        # Get events for next 7 days
         now = datetime.utcnow()
         time_min = now.isoformat() + 'Z'
-        time_max = (now + timedelta(hours=24)).isoformat() + 'Z'
+        time_max = (now + timedelta(days=7)).isoformat() + 'Z'
         
         events_result = service.events().list(
             calendarId='primary',

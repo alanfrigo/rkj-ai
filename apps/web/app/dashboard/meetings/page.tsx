@@ -5,6 +5,7 @@ import { Video, Search, Clock, Users, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ExcludeEventButton } from "./exclude-event-button";
 
 type MeetingWithEvent = {
     id: string;
@@ -84,6 +85,7 @@ export default async function MeetingsPage() {
         .select("*")
         .eq("user_id", user?.id)
         .eq("status", "confirmed")
+        .eq("is_excluded", false)
         .order("start_time", { ascending: true });
 
     const meetingCalendarIds = new Set(meetings?.map(m => m.calendar_event_id).filter(Boolean));
@@ -265,11 +267,16 @@ export default async function MeetingsPage() {
                                                         )}
                                                     </td>
 
-                                                    {/* Arrow */}
+                                                    {/* Arrow or Exclude Button */}
                                                     <td className="w-10 px-4 py-3 text-right">
-                                                        {isClickable && (
+                                                        {meeting.is_upcoming_event ? (
+                                                            <ExcludeEventButton
+                                                                eventId={meeting.id}
+                                                                title={meeting.title}
+                                                            />
+                                                        ) : isClickable ? (
                                                             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity inline-block" />
-                                                        )}
+                                                        ) : null}
                                                     </td>
                                                 </>
                                             );

@@ -89,6 +89,7 @@ export default async function DashboardPage() {
         `)
         .eq("user_id", user?.id)
         .eq("status", "confirmed")
+        .eq("is_excluded", false)
         .gte("start_time", new Date().toISOString())
         .order("start_time", { ascending: true })
         .limit(5);
@@ -310,16 +311,16 @@ export default async function DashboardPage() {
                                             <Badge
                                                 variant={
                                                     meeting.status === "completed" ? "completed"
-                                                    : meeting.status === "recording" ? "recording"
-                                                    : meeting.status === "scheduled" ? "scheduled"
-                                                    : "default"
+                                                        : meeting.status === "recording" ? "recording"
+                                                            : meeting.status === "scheduled" ? "scheduled"
+                                                                : "default"
                                                 }
                                                 className="w-full justify-center text-[10px]"
                                             >
                                                 {meeting.status === "completed" ? "OK"
                                                     : meeting.status === "recording" ? "REC"
-                                                    : meeting.status === "scheduled" ? "AGD"
-                                                    : meeting.status?.slice(0, 3).toUpperCase()}
+                                                        : meeting.status === "scheduled" ? "AGD"
+                                                            : meeting.status?.slice(0, 3).toUpperCase()}
                                             </Badge>
                                         </div>
                                         <div className="flex-1 min-w-0">

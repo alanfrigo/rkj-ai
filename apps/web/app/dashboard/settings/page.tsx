@@ -6,11 +6,12 @@ import {
     Bell,
     Trash2,
     Check,
+    RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LabeledSwitch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/ui/avatar";
+import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
     const supabase = await createClient();
@@ -27,6 +28,14 @@ export default async function SettingsPage() {
         .from("connected_calendars")
         .select("*")
         .eq("user_id", user?.id);
+
+    // Prepare settings with defaults
+    const userSettings = {
+        auto_sync_calendar: profile?.settings?.auto_sync_calendar ?? true,
+        auto_record: profile?.settings?.auto_record ?? true,
+        email_notifications: profile?.settings?.email_notifications ?? true,
+        notifications_enabled: profile?.settings?.notifications_enabled ?? true,
+    };
 
     return (
         <div className="animate-fade-in max-w-2xl">
@@ -126,27 +135,12 @@ export default async function SettingsPage() {
                     </div>
                 </section>
 
-                {/* Notifications Section */}
+                {/* Sync & Notifications Section */}
                 <section>
                     <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
-                        Notificações
+                        Sincronização e Notificações
                     </h2>
-                    <div className="rounded-lg border border-border bg-card divide-y divide-border">
-                        <div className="p-4">
-                            <LabeledSwitch
-                                label="Notificações por email"
-                                description="Receba emails quando reuniões forem gravadas"
-                                defaultChecked={profile?.settings?.email_notifications ?? true}
-                            />
-                        </div>
-                        <div className="p-4">
-                            <LabeledSwitch
-                                label="Gravação automática"
-                                description="Gravar automaticamente todas as reuniões detectadas"
-                                defaultChecked={profile?.settings?.auto_record ?? true}
-                            />
-                        </div>
-                    </div>
+                    <SettingsForm initialSettings={userSettings} />
                 </section>
 
                 {/* Danger Zone */}

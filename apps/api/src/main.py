@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from .config import settings
-from .routers import calendar, meetings, recordings, transcriptions
+from .routers import calendar, meetings, recordings, transcriptions, settings as settings_router
 from .core.redis import init_redis, close_redis
 
 # Configure logging
@@ -79,6 +79,12 @@ app.include_router(
     transcriptions.router,
     prefix="/api/transcriptions",
     tags=["Transcriptions"]
+)
+
+app.include_router(
+    settings_router.router,
+    prefix="/api/settings",
+    tags=["Settings"]
 )
 
 

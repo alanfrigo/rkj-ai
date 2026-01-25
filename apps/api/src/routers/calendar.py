@@ -55,6 +55,7 @@ async def list_calendar_events(
     query = db.client.table('calendar_events')\
         .select('*')\
         .eq('user_id', user["id"])\
+        .eq('is_excluded', False)\
         .lte('start_time', end_time.isoformat())\
         .order('start_time')
     
@@ -126,6 +127,44 @@ async def update_event_settings(
         .update({"should_record": should_record})\
         .eq('id', event_id)\
         .execute()
+    
+    return result.data[0] if result.data else event
+
+
+@router.patch("/events/{event_id}/exclude")
+async def exclude_event(
+    event_id: str,
+    exclude: bool = Query(True, description="Whether to exclude this event"),
+    user: dict = Depends(get_current_user)
+):
+    """
+    Exclude an event from the system (soft delete)
+    
+    This marks the event as excluded without deleting it from the user's real calendar.
+    Excluded events won't appear in listings or be considered for recording.
+    """
+    db = get_db(admin=True)
+    
+    # Verify ownership
+    event = db.client.table('calendar_events')\
+        .select('*')\
+        .eq('id', event_id)\
+        .single()\
+        .execute().data
+    
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if event["user_id"] != user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Update is_excluded status
+    result = db.client.table('calendar_events')\
+        .update({"is_excluded": exclude})\
+        .eq('id', event_id)\
+        .execute()
+    
+    logger.info(f"Event {event_id} {'excluded' if exclude else 'restored'} by user {user['id']}")
     
     return result.data[0] if result.data else event
 
