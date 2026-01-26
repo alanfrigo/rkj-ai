@@ -11,7 +11,7 @@ services:
   # -------------------------------------------
   redis:
     image: redis:7-alpine
-    container_name: ma-redis
+    container_name: rkj-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -24,7 +24,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - meeting-assistant
+      - rkj-ai
 
   # -------------------------------------------
   # Web Frontend (Next.js 16)
@@ -42,7 +42,7 @@ services:
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
         - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
-    container_name: ma-web
+    container_name: rkj-web
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -68,7 +68,7 @@ services:
       # This enables using the same Supabase URL for both browser and server (required for PKCE cookies)
       - "localhost:host-gateway"
     networks:
-      - meeting-assistant
+      - rkj-ai
 
   # -------------------------------------------
   # Backend API (FastAPI)
@@ -77,7 +77,7 @@ services:
     build:
       context: ../../apps/api
       dockerfile: Dockerfile
-    container_name: ma-api
+    container_name: rkj-api
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -106,7 +106,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - meeting-assistant
+      - rkj-ai
 
   # -------------------------------------------
   # Scheduler (Calendar Sync & Meeting Detection)
@@ -115,7 +115,7 @@ services:
     build:
       context: ../../services/scheduler
       dockerfile: Dockerfile
-    container_name: ma-scheduler
+    container_name: rkj-scheduler
     restart: unless-stopped
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
@@ -131,7 +131,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - meeting-assistant
+      - rkj-ai
   # -------------------------------------------
   # Bot Orchestrator (Container Management)
   # -------------------------------------------
@@ -139,7 +139,7 @@ services:
     build:
       context: ../../services/bot-orchestrator
       dockerfile: Dockerfile
-    container_name: ma-bot-orchestrator
+    container_name: rkj-bot-orchestrator
     restart: unless-stopped
     ports:
       - "8002:8002"
@@ -155,7 +155,7 @@ services:
       - BOT_DISPLAY_NAME=${BOT_DISPLAY_NAME:-Meeting Assistant Bot 🤖}
       - BOT_MAX_DURATION_HOURS=${BOT_MAX_DURATION_HOURS:-4}
       - BOT_IMAGE=docker-meet-bot:latest
-      - DOCKER_NETWORK=meeting-assistant-network
+      - DOCKER_NETWORK=rkj-ai-network
       - RECORDINGS_VOLUME=docker_recordings
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - GOOGLE_AUTH_LOGIN=${GOOGLE_AUTH_LOGIN}
@@ -170,7 +170,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - meeting-assistant
+      - rkj-ai
 
   # -------------------------------------------
   # Meet Bot (Build only - spawned by orchestrator)
@@ -192,7 +192,7 @@ services:
     build:
       context: ../../services/transcription-worker
       dockerfile: Dockerfile
-    container_name: ma-transcription-worker
+    container_name: rkj-transcription-worker
     restart: unless-stopped
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
@@ -213,7 +213,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - meeting-assistant
+      - rkj-ai
 
   # -------------------------------------------
   # Media Processor (Video/Audio Processing)
@@ -249,7 +249,7 @@ services:
   # -------------------------------------------
   bull-board:
     image: deadly0/bull-board
-    container_name: ma-bull-board
+    container_name: rkj-bull-board
     restart: unless-stopped
     ports:
       - "3001:3000"
@@ -260,7 +260,7 @@ services:
     depends_on:
       - redis
     networks:
-      - meeting-assistant
+      - rkj-ai
     profiles:
       - dev
 
@@ -281,6 +281,6 @@ volumes:
 # Networks
 # -------------------------------------------
 networks:
-  meeting-assistant:
+  rkj-ai:
     driver: bridge
-    name: meeting-assistant-network
+    name: rkj-ai-network
