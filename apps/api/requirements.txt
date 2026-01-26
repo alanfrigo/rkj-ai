@@ -5,7 +5,7 @@
 # Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+python-multipart==0.0.18
 
 # Validation & Settings
 pydantic==2.5.3
@@ -43,5 +43,5 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 
 # Dev
-black==24.1.1
+black==24.3.0
 ruff==0.1.14
