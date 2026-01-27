@@ -64,44 +64,20 @@ services:
           memory: 512M
 
   # -------------------------------------------
-  # Web Frontend
+  # Web Frontend (Hosted on Vercel)
   # -------------------------------------------
-  web:
-    build:
-      context: ../../apps/web
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_APP_URL=https://${WEB_DOMAIN}
-        - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
-    container_name: rkj-web
-    restart: always
-    environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      - NEXT_PUBLIC_APP_URL=https://${WEB_DOMAIN}
-      - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - ORCHESTRATOR_URL=http://bot-orchestrator:8002
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`${WEB_DOMAIN}`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=myresolver"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
-    depends_on:
-      - bot-orchestrator
-    networks:
-      - rkj-ai
+  # The Next.js frontend is deployed to Vercel for:
+  # - Global CDN performance
+  # - Automatic SSL
+  # - Edge Functions support
+  # - Zero-config deployments
+  #
+  # Configure on Vercel:
+  # - Framework: Next.js
+  # - Root: apps/web
+  # - Env vars: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+  #             NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_API_URL
+  # -------------------------------------------
 
   # -------------------------------------------
   # Backend API

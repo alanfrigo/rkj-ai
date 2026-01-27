@@ -1,59 +1,56 @@
-# Guia de Deploy em Produção (VPS Limpa)
+# Guia de Deploy em Produção: Vercel + VPS
 
-Este guia cobre o processo de deploy da aplicação em uma VPS limpa (Ubuntu/Debian) usando **Traefik** como proxy reverso e um script de **1-Click Deploy**.
+Este guia cobre o deploy da aplicação usando **Vercel** para o frontend e uma **VPS** para o backend e serviços.
 
 > [!NOTE]
-> Recomendamos uma VPS com pelo menos **32GB RAM** e **8 vCPUs** para performance ideal, conforme configurado nos limites dos containers.
+> **Arquitetura:**
+> - Frontend (Next.js) → **Vercel** (CDN global, Edge Functions)
+> - Backend (FastAPI, Redis, Workers) → **VPS** (Hetzner, DigitalOcean)
 
 ---
 
-## 📋 Arquitetura de Produção
+## 📋 Arquitetura Final
 
-| Componente | Serviço | URL Pública (Exemplo) |
-|------------|---------|-----------------------|
-| **Proxy / SSL** | Traefik | N/A (Portas 80/443) |
-| **Frontend** | Next.js | `https://rkj.seudominio.com` |
-| **Backend API** | FastAPI | `https://api.seudominio.com` |
-| **Database** | Supabase Cloud | `https://xxxx.supabase.co` |
-| **Storage** | Cloudflare R2 | `https://pub-xxx.r2.dev` |
-
----
-
-## Passo 1: Pré-requisitos
-
-### 1.1 Domínios (DNS)
-
-Configure os apontamentos DNS (Tipo A) no seu provedor para o IP da sua VPS:
-
-- `rkj.seudominio.com` -> `IP_DA_VPS`
-- `api.seudominio.com` -> `IP_DA_VPS`
-
-> [!IMPORTANT]
-> O DNS deve estar propagado antes de rodar o script para que o Let's Encrypt gere os certificados SSL.
-
-### 1.2 VPS Limpa
-
-- **OS**: Ubuntu 22.04 LTS ou 24.04 LTS recommended.
-- **Acesso**: SSH root ou usuário com sudo.
-- **Portas**: O script irá configurar o firewall (UFW) para abrir apenas 22 (SSH), 80 (HTTP) e 443 (HTTPS).
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          USUÁRIO                                │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+    ┌───────────────────────┴───────────────────────┐
+    │                                               │
+    ▼                                               ▼
+┌─────────────────────┐                 ┌─────────────────────────┐
+│      VERCEL         │                 │         VPS             │
+├─────────────────────┤                 ├─────────────────────────┤
+│ • Next.js Frontend  │ ──────────────► │ • Traefik (SSL)         │
+│ • CDN Global        │     HTTPS       │ • FastAPI (API)         │
+│ • rkj.ai            │                 │ • Redis (Queue)         │
+└─────────────────────┘                 │ • Bot Orchestrator      │
+                                        │ • Transcription Worker  │
+                                        │ • api.rkj.ai            │
+                                        └─────────────────────────┘
+```
 
 ---
 
-## Passo 2: Configuração de Ambiente
+## Passo 1: Deploy do Backend (VPS)
 
-### 2.1 Preparar Variáveis
+### 1.1 Pré-requisitos VPS
 
-Crie um arquivo `.env` na raiz do projeto (ou no servidor, se estiver clonando lá) com as seguintes variáveis. Use `.env.production.example` como base.
+- **OS**: Ubuntu 22.04 ou 24.04 LTS
+- **RAM**: Mínimo 8GB (32GB+ para múltiplos bots)
+- **DNS**: Configure `api.seudominio.com` → IP da VPS
 
-**Variáveis Críticas para Deploy:**
+### 1.2 Configurar `.env`
+
+Crie o arquivo `.env` na raiz do projeto:
 
 ```env
-# Domínios
-WEB_DOMAIN=rkj.seudominio.com
+# Domínio da API (obrigatório)
 API_DOMAIN=api.seudominio.com
-ACME_EMAIL=seu-email@dominio.com  # Para notificações do Let's Encrypt
+ACME_EMAIL=seu-email@dominio.com
 
-# Supabase
+# Supabase Cloud
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJhbG...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
@@ -66,77 +63,119 @@ R2_SECRET_ACCESS_KEY=...
 R2_BUCKET_NAME=meeting-assistant
 R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
-# OpenAI & Google
+# APIs
 OPENAI_API_KEY=sk-...
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
-
-# Bot Auth (Google Account para o bot entrar nas calls)
-GOOGLE_AUTH_LOGIN=bot@gmail.com
-GOOGLE_AUTH_PASSWORD=senha-app-password
 ```
 
----
-
-## Passo 3: 1-Click Deploy
-
-Use o script `deploy.sh` fornecido na raiz do projeto. Este script automatiza:
-1. Instalação do Docker e Docker Compose (se necessário).
-2. Configuração do Firewall (UFW).
-3. Build e subida dos containers.
+### 1.3 Executar Deploy
 
 ```bash
-# Dar permissão de execução
+# Clonar repositório
+git clone https://github.com/seu-repo/meeting-assistant.git
+cd meeting-assistant
+
+# Copiar .env
+cp .env.production.example .env
+# Editar .env com seus valores
+
+# Executar deploy
 chmod +x deploy.sh
-
-# Executar o deploy
-./deploy.sh
+sudo ./deploy.sh
 ```
 
-O script fará validações iniciais e pedirá confirmação antes de alterar configurações do sistema.
+O script irá:
+1. Instalar Docker (se necessário)
+2. Configurar firewall (portas 22, 80, 443)
+3. Build e deploy dos containers
+4. Verificar se está rodando
 
 ---
 
-## 4. Manutenção e Troubleshooting
+## Passo 2: Deploy do Frontend (Vercel)
 
-### Verificar Status
+### 2.1 Conectar Repositório
+
+1. Acesse [vercel.com](https://vercel.com) e conecte seu repositório
+2. Configure o projeto:
+   - **Framework Preset**: Next.js
+   - **Root Directory**: `apps/web`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `.next`
+
+### 2.2 Variáveis de Ambiente (Vercel)
+
+No painel do Vercel, adicione estas variáveis:
+
+| Variável | Valor |
+|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbG...` |
+| `NEXT_PUBLIC_APP_URL` | `https://rkj.ai` |
+| `NEXT_PUBLIC_API_URL` | `https://api.rkj.ai` |
+
+### 2.3 Domínio Customizado
+
+1. Vá em **Settings → Domains**
+2. Adicione seu domínio (ex: `rkj.ai`)
+3. Configure DNS conforme instruções da Vercel
+
+---
+
+## 3. Verificação
 
 ```bash
-# Ver containers rodando
+# Verificar API na VPS
+curl https://api.seudominio.com/health
+
+# Verificar containers
 docker ps
 
-# Ver logs do Traefik (problemas de SSL/Roteamento)
+# Ver logs
+docker logs -f rkj-api
+docker logs -f rkj-traefik
+```
+
+---
+
+## 4. Manutenção
+
+### Atualizar Backend
+
+```bash
+cd meeting-assistant
+git pull origin main
+sudo ./deploy.sh
+```
+
+### Atualizar Frontend
+
+Push para a branch `main` → Vercel faz deploy automático.
+
+### Logs Úteis
+
+```bash
+# API
+docker logs -f rkj-api
+
+# Traefik (SSL/Roteamento)
 docker logs -f rkj-traefik
 
-# Ver logs do Orchestrator
+# Bot Orchestrator
 docker logs -f rkj-bot-orchestrator
+
+# Transcription Worker
+docker logs -f rkj-transcription-worker
 ```
 
-### Atualizar Aplicação
+---
 
-Para atualizar a aplicação com novas mudanças do git:
+## 5. Troubleshooting
 
-```bash
-# 1. Puxe as atualizações
-git pull origin main
-
-# 2. Rode o script novamente
-./deploy.sh
-```
-
-### Reiniciar um Serviço Específico
-
-```bash
-docker compose -f infrastructure/docker/docker-compose.prod.yml restart web
-```
-
-### Limpeza de Disco
-
-O sistema gera gravações e logs. Para limpar dados antigos e containers não utilizados:
-
-```bash
-docker system prune -a --volumes
-```
-
-> [!WARNING]
-> Isso removerá containers parados e imagens não utilizadas. Cuidado em produção.
+| Problema | Solução |
+|----------|---------|
+| SSL não funciona | Verificar se DNS propagou: `dig api.seudominio.com` |
+| API retorna 502 | Ver logs: `docker logs rkj-api` |
+| Frontend não conecta na API | Verificar `NEXT_PUBLIC_API_URL` no Vercel |
+| Bots não entram na reunião | Checar logs: `docker logs rkj-bot-orchestrator` |
