@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     # Bot Configuration
     # -------------------------------------------
     BOT_DISPLAY_NAME: str = Field(
-        default="Meeting Assistant Bot 🤖",
+        default="RKJ.AI",
         description="Bot display name in meetings"
     )
     BOT_JOIN_BEFORE_MINUTES: int = Field(

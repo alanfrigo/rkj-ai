@@ -71,7 +71,7 @@ export async function POST(request: Request) {
                 .eq("id", user.id)
                 .single();
 
-            const botDisplayName = profile?.settings?.bot_display_name ?? "Meeting Assistant Bot 🤖";
+            const botDisplayName = profile?.settings?.bot_display_name ?? "RKJ.AI";
             const botCameraEnabled = profile?.settings?.bot_camera_enabled ?? false;
 
             const Redis = require("ioredis");

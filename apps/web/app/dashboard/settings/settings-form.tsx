@@ -147,9 +147,9 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
                         <div className="flex items-center gap-2">
                             <Input
                                 id="bot-name"
-                                value={settings.bot_display_name ?? "Meeting Assistant Bot 🤖"}
+                                value={settings.bot_display_name ?? "RKJ.AI"}
                                 onChange={(e) => handleBotNameChange(e.target.value)}
-                                placeholder="Meeting Assistant Bot 🤖"
+                                placeholder="RKJ.AI"
                                 className="max-w-xs"
                             />
                             <Button

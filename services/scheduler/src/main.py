@@ -252,7 +252,7 @@ class MeetingScheduler:
             .execute()
         
         user_settings = user_result.data.get('settings', {}) if user_result.data else {}
-        bot_display_name = user_settings.get('bot_display_name', 'Meeting Assistant Bot 🤖')
+        bot_display_name = user_settings.get('bot_display_name', 'RKJ.AI')
         bot_camera_enabled = user_settings.get('bot_camera_enabled', False)
         
         # Create meeting record
@@ -290,6 +290,44 @@ class MeetingScheduler:
         logger.info(f"Enqueued bot join job for meeting {meeting_id}")
 
 
+async def process_calendar_sync_queue(calendar_sync: CalendarSync, supabase, redis_client):
+    """Process pending calendar sync jobs from the queue"""
+    try:
+        # Check for pending sync jobs (non-blocking)
+        job_data = await redis_client.lpop("queue:calendar_sync")
+        if not job_data:
+            return
+        
+        job = json.loads(job_data)
+        data = job.get("data", {})
+        user_id = data.get("user_id")
+        
+        if not user_id:
+            logger.error(f"Calendar sync job missing user_id: {job}")
+            return
+        
+        logger.info(f"Processing manual calendar sync for user {user_id}")
+        
+        # Get user data
+        result = supabase.table('users')\
+            .select('id, email, google_refresh_token, settings')\
+            .eq('id', user_id)\
+            .single()\
+            .execute()
+        
+        user = result.data
+        if not user or not user.get('google_refresh_token'):
+            logger.error(f"User {user_id} not found or no refresh token")
+            return
+        
+        # Sync this user's calendar (bypass auto_sync check for manual syncs)
+        await calendar_sync.sync_user_calendar(user)
+        logger.info(f"Completed manual calendar sync for user {user_id}")
+        
+    except Exception as e:
+        logger.error(f"Error processing calendar sync job: {e}")
+
+
 async def main():
     """Main entry point"""
     logger.info("Starting Scheduler service")
@@ -313,7 +351,10 @@ async def main():
         while True:
             now = datetime.utcnow()
             
-            # Run calendar sync periodically
+            # Process any pending manual calendar sync jobs
+            await process_calendar_sync_queue(calendar_sync, supabase, redis_client)
+            
+            # Run calendar sync periodically (for auto-enabled users)
             if (now - last_calendar_sync).total_seconds() >= CALENDAR_SYNC_INTERVAL:
                 await calendar_sync.sync_all_users()
                 last_calendar_sync = now
@@ -332,3 +373,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

@@ -21,7 +21,7 @@ export async function GET() {
         notifications_enabled: true,
         email_notifications: true,
         auto_sync_calendar: true,
-        bot_display_name: "Meeting Assistant Bot 🤖",
+        bot_display_name: "RKJ.AI",
         bot_camera_enabled: false,
     };
 

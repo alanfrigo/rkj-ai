@@ -29,21 +29,39 @@ export default function OnboardingClient() {
     const supabase = createClient();
 
     useEffect(() => {
-        // Load user's current name
-        const loadUser = async () => {
+        // Load user's current name and check calendar status
+        const initialize = async () => {
             const { data: { user } } = await supabase.auth.getUser();
+
             if (user?.user_metadata?.full_name) {
                 setFullName(user.user_metadata.full_name);
             }
-        };
-        loadUser();
 
-        // Check URL params for step
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("step") === "success") {
-            setStep("success");
-        }
-    }, [supabase.auth]);
+            // Check if user already has a connected calendar
+            if (user) {
+                const { data: calendars } = await supabase
+                    .from("connected_calendars")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("is_active", true)
+                    .limit(1);
+
+                if (calendars && calendars.length > 0) {
+                    // Calendar already connected, skip to success
+                    setStep("success");
+                    return;
+                }
+            }
+
+            // Check URL params for step
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("step") === "success") {
+                setStep("success");
+            }
+        };
+
+        initialize();
+    }, [supabase, supabase.auth]);
 
     const handleWelcomeNext = async () => {
         if (!fullName.trim()) {

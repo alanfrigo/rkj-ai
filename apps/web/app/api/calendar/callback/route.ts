@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Calendar OAuth Callback
+ * Called when user connects their Google Calendar during onboarding.
+ * - Stores refresh token
+ * - Creates connected_calendars entry
+ * - Triggers immediate calendar sync
+ * - Redirects to dashboard (onboarding complete)
+ */
 export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const code = requestUrl.searchParams.get("code");
@@ -14,18 +22,29 @@ export async function GET(request: Request) {
             const { user, session } = data;
 
             // Store the refresh token for calendar access
-            // The Google OAuth flow returns tokens we need to save
             if (session.provider_refresh_token) {
+                // Get current user settings to merge with new ones
+                const { data: currentUser } = await supabase
+                    .from("users")
+                    .select("settings")
+                    .eq("id", user.id)
+                    .single();
+
+                const currentSettings = currentUser?.settings || {};
+
                 await supabase
                     .from("users")
                     .update({
                         google_refresh_token: session.provider_refresh_token,
                         google_token_expires_at: new Date(Date.now() + (session.expires_in || 3600) * 1000).toISOString(),
+                        settings: {
+                            ...currentSettings,
+                            auto_sync_calendar: true, // Enable auto sync when calendar is connected
+                        },
                     })
                     .eq("id", user.id);
 
-                // Create a connected calendar entry
-                // For now we'll use a placeholder - the scheduler will sync actual calendars
+                // Create a connected calendar entry if it doesn't exist
                 const { data: existingCalendar } = await supabase
                     .from("connected_calendars")
                     .select("id")
@@ -44,13 +63,31 @@ export async function GET(request: Request) {
                         is_primary: true,
                     });
                 }
+
+                // Trigger immediate calendar sync
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                    await fetch(`${apiUrl}/api/calendar/sync`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${session.access_token}`,
+                        },
+                    });
+                    console.log("[Calendar Callback] Triggered immediate calendar sync");
+                } catch (syncError) {
+                    console.error("[Calendar Callback] Failed to trigger sync:", syncError);
+                    // Non-blocking - scheduler will sync eventually
+                }
             }
 
-            // Redirect to success page
-            return NextResponse.redirect(`${origin}/onboarding?step=success`);
+            // Calendar connected, redirect to dashboard
+            // Onboarding is now complete
+            return NextResponse.redirect(`${origin}/dashboard`);
         }
     }
 
     // If there's an error, redirect back to onboarding
     return NextResponse.redirect(`${origin}/onboarding?error=calendar_error`);
 }
+

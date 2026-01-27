@@ -398,7 +398,7 @@ Todas as tabelas usam Row Level Security:
 2. **Entrada na reunião:**
    - Navega para o link do Meet
    - Desativa câmera e microfone
-   - Define nome como "Meeting Assistant Bot 🤖"
+   - Define nome como "RKJ.AI"
    - Clica em "Participar agora"
    - Aguarda confirmação de entrada
 

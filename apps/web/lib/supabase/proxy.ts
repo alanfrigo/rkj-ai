@@ -6,12 +6,17 @@ import { NextResponse, type NextRequest } from "next/server";
  * Called by proxy.ts for protected routes.
  * 
  * Also adds security headers to all responses.
+ * 
+ * Onboarding is handled specially:
+ * - Unauthenticated users are redirected to login
+ * - Authenticated users WITH calendar are redirected to dashboard
+ * - Authenticated users WITHOUT calendar can access onboarding
  */
 export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Public routes - skip auth check
-    const publicRoutes = ["/", "/login", "/signup", "/callback", "/auth/callback", "/api/auth", "/onboarding"];
+    // Public routes - skip auth check entirely
+    const publicRoutes = ["/", "/login", "/signup", "/callback", "/auth/callback", "/api/auth"];
     const isPublicRoute = publicRoutes.some((route) =>
         pathname.startsWith(route) || pathname === route
     );
@@ -70,6 +75,9 @@ export async function updateSession(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Handle onboarding route specifically
+    const isOnboardingRoute = pathname.startsWith("/onboarding");
+
     if (!user) {
         // API routes return 401 for unauthenticated requests
         if (pathname.startsWith("/api/")) {
@@ -79,6 +87,13 @@ export async function updateSession(request: NextRequest) {
             );
         }
 
+        // Unauthenticated users trying to access onboarding go to login
+        if (isOnboardingRoute) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/login";
+            return NextResponse.redirect(url);
+        }
+
         // Browser routes redirect to login
         const url = request.nextUrl.clone();
         url.pathname = "/login";
@@ -86,5 +101,29 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
+    // User is authenticated - check onboarding completion for /onboarding route
+    if (isOnboardingRoute) {
+        // Check if user has already completed onboarding (has connected calendar)
+        const { data: calendars } = await supabase
+            .from("connected_calendars")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("is_active", true)
+            .limit(1);
+
+        const hasCompletedOnboarding = calendars && calendars.length > 0;
+
+        if (hasCompletedOnboarding) {
+            // User already has a calendar connected, redirect to dashboard
+            const url = request.nextUrl.clone();
+            url.pathname = "/dashboard";
+            return NextResponse.redirect(url);
+        }
+
+        // User needs onboarding, allow access
+        return addSecurityHeaders(supabaseResponse);
+    }
+
     return addSecurityHeaders(supabaseResponse);
 }
+

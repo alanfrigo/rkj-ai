@@ -26,7 +26,7 @@ class Config:
     
     # Bot Configuration
     BOT_IMAGE: str = os.getenv("BOT_IMAGE", "docker-meet-bot:latest")
-    BOT_DISPLAY_NAME: str = os.getenv("BOT_DISPLAY_NAME", "Meeting Assistant Bot 🤖")
+    BOT_DISPLAY_NAME: str = os.getenv("BOT_DISPLAY_NAME", "RKJ.AI")
     BOT_MAX_DURATION_HOURS: int = int(os.getenv("BOT_MAX_DURATION_HOURS", "4"))
     
     # Docker

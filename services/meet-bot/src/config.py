@@ -13,7 +13,7 @@ class Config:
     USER_ID: str = os.getenv("USER_ID", "")
     
     # Bot Display
-    BOT_NAME: str = os.getenv("BOT_DISPLAY_NAME", "Meeting Assistant Bot 🤖")
+    BOT_NAME: str = os.getenv("BOT_DISPLAY_NAME", "RKJ.AI")
     BOT_CAMERA_ENABLED: bool = os.getenv("BOT_CAMERA_ENABLED", "false").lower() == "true"
     
     # Recording
