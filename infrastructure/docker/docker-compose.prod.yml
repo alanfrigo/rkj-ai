@@ -110,11 +110,12 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HEALTHCHECK_URL=http://localhost:8000/health
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -203,12 +204,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    # Healthcheck defined in Dockerfile (pings Redis to verify service is running)
     networks:
       - rkj-ai
     deploy:
