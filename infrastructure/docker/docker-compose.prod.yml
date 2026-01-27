@@ -140,6 +140,18 @@ services:
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=myresolver"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
+      # Rate Limiting Middleware (50 requests per second burst, 20 average)
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=20"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.period=1s"
+      # Security Headers Middleware
+      - "traefik.http.middlewares.api-security.headers.frameDeny=true"
+      - "traefik.http.middlewares.api-security.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.api-security.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.api-security.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.api-security.headers.stsIncludeSubdomains=true"
+      # Apply middlewares to router
+      - "traefik.http.routers.api.middlewares=api-ratelimit,api-security"
     depends_on:
       redis:
         condition: service_healthy

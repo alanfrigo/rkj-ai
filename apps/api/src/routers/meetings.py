@@ -10,6 +10,7 @@ import logging
 
 from ..core.supabase import get_db, get_user_from_token
 from ..dependencies import get_current_user
+from ..core.rate_limiter import sensitive_endpoint, rate_limit
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -111,6 +112,7 @@ async def get_upcoming_meetings(
 
 
 @router.post("/")
+@rate_limit(limit=20, window=60)  # 20 creates per minute
 async def create_meeting(
     meeting: MeetingCreate,
     user: dict = Depends(get_current_user)
@@ -218,6 +220,7 @@ async def delete_meeting(
 
 
 @router.post("/{meeting_id}/cancel")
+@rate_limit(limit=10, window=60)  # 10 cancels per minute
 async def cancel_meeting(
     meeting_id: str,
     user: dict = Depends(get_current_user)
@@ -250,6 +253,7 @@ async def cancel_meeting(
 
 
 @router.post("/{meeting_id}/retry")
+@sensitive_endpoint  # 10 requests per minute (default)
 async def retry_meeting(
     meeting_id: str,
     user: dict = Depends(get_current_user)

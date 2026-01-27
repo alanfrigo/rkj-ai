@@ -18,7 +18,7 @@ from rich.panel import Panel
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import config
-from scenarios import BotStressScenario, TranscriptionLoadScenario
+from scenarios import BotStressScenario, TranscriptionLoadScenario, APISecurityScenario
 from generators import HTMLReportGenerator, JSONReportGenerator
 
 console = Console()
@@ -114,6 +114,48 @@ def transcription(files: int, duration_minutes: int, output: str):
         
         # Save results
         output_path = output or f"results/transcription_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        save_results(result.to_dict(), output_path)
+        
+        return result
+    
+    asyncio.run(run())
+
+
+@cli.command()
+@click.option('--target', '-t', default="http://localhost:8000", help='Target API URL')
+@click.option('--rps', '-r', default=100, help='Requests per second for flood tests')
+@click.option('--duration', '-d', default=10, help='Duration for sustained tests (seconds)')
+@click.option('--auth-token', '-a', default=None, help='Optional auth token for authenticated tests')
+@click.option('--output', '-o', default=None, help='Output file path for results')
+def security(target: str, rps: int, duration: int, auth_token: str, output: str):
+    """
+    🔒 API Security Test
+    
+    Tests rate limiting, authentication, and general API security.
+    Run from OUTSIDE the VPS to test external rate limiting.
+    """
+    console.print(Panel.fit(
+        f"[bold red]API Security Test[/bold red]\n"
+        f"Target: {target} | RPS: {rps} | Duration: {duration}s",
+        title="🔒 Starting Security Benchmark"
+    ))
+    
+    async def run():
+        scenario = APISecurityScenario()
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Running security tests...", total=None)
+            result = await scenario.run(target=target, rps=rps, duration=duration, auth_token=auth_token)
+        
+        # Display results
+        display_results(result.to_dict())
+        
+        # Save results
+        output_path = output or f"results/security_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         save_results(result.to_dict(), output_path)
         
         return result

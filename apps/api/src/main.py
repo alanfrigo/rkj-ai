@@ -56,6 +56,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configure Rate Limiting
+from .core.rate_limiter import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
+
 # Include routers
 app.include_router(
     calendar.router,
