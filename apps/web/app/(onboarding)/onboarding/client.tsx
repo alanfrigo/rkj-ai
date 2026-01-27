@@ -84,11 +84,6 @@ export default function OnboardingClient() {
 
         // Redirect to Google Calendar OAuth with additional scopes
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-        console.log("Debug Calendar Auth:", {
-            NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-            window_origin: window.location.origin,
-            final_appUrl: appUrl
-        });
 
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
