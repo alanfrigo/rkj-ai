@@ -62,6 +62,7 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
             day: "numeric",
             month: "long",
             year: "numeric",
+            timeZone: "America/Sao_Paulo",
         });
     };
 
@@ -70,6 +71,7 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
         return new Date(dateStr).toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
         });
     };
 
@@ -260,37 +262,85 @@ export default async function MeetingPage({ params }: MeetingPageProps) {
                     </div>
 
                     <div className="flex-1 overflow-y-auto">
-                        {segments.length > 0 ? (
-                            <div className="divide-y divide-border">
-                                {segments.map((segment: any, index: number) => (
-                                    <div
-                                        key={segment.id || index}
-                                        className="px-4 py-3 hover:bg-accent/30 transition-colors"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            {segment.speaker_name && (
-                                                <UserAvatar name={segment.speaker_name} size="sm" />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    {segment.speaker_name && (
-                                                        <span className="text-xs font-medium">
-                                                            {segment.speaker_name}
-                                                        </span>
-                                                    )}
+                        {segments.length > 0 ? (() => {
+                            // Agrupar segmentos consecutivos do mesmo orador
+                            const groupedSegments = segments.reduce((acc: any[], segment: any) => {
+                                const lastGroup = acc[acc.length - 1];
+                                const speakerName = segment.speaker_name || "Participante";
+
+                                if (lastGroup && (lastGroup.speaker_name || "Participante") === speakerName) {
+                                    // Mesmo orador - adicionar texto ao grupo existente
+                                    lastGroup.texts.push({
+                                        text: segment.text,
+                                        start_time_ms: segment.start_time_ms
+                                    });
+                                    lastGroup.end_time_ms = segment.end_time_ms;
+                                } else {
+                                    // Novo orador ou primeiro segmento
+                                    acc.push({
+                                        speaker_name: speakerName,
+                                        start_time_ms: segment.start_time_ms,
+                                        end_time_ms: segment.end_time_ms,
+                                        texts: [{ text: segment.text, start_time_ms: segment.start_time_ms }]
+                                    });
+                                }
+                                return acc;
+                            }, []);
+
+                            // Cores distintas por orador
+                            const speakerColors: { [key: string]: string } = {};
+                            const colors = [
+                                "bg-blue-500/10 border-l-blue-500",
+                                "bg-emerald-500/10 border-l-emerald-500",
+                                "bg-purple-500/10 border-l-purple-500",
+                                "bg-amber-500/10 border-l-amber-500",
+                                "bg-pink-500/10 border-l-pink-500",
+                                "bg-cyan-500/10 border-l-cyan-500",
+                            ];
+                            let colorIndex = 0;
+                            groupedSegments.forEach((group: any) => {
+                                if (!speakerColors[group.speaker_name]) {
+                                    speakerColors[group.speaker_name] = colors[colorIndex % colors.length];
+                                    colorIndex++;
+                                }
+                            });
+
+                            const formatTimestamp = (ms: number) => {
+                                const minutes = Math.floor(ms / 60000);
+                                const seconds = Math.floor((ms % 60000) / 1000);
+                                return `${minutes}:${String(seconds).padStart(2, '0')}`;
+                            };
+
+                            return (
+                                <div className="space-y-1 p-2">
+                                    {groupedSegments.map((group: any, index: number) => (
+                                        <div
+                                            key={index}
+                                            className={`rounded-lg border-l-4 px-4 py-3 ${speakerColors[group.speaker_name]}`}
+                                        >
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <UserAvatar name={group.speaker_name} size="sm" />
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium">
+                                                        {group.speaker_name}
+                                                    </span>
                                                     <span className="text-xs text-muted-foreground font-mono">
-                                                        {Math.floor(segment.start_time_ms / 60000)}:{String(Math.floor((segment.start_time_ms % 60000) / 1000)).padStart(2, '0')}
+                                                        {formatTimestamp(group.start_time_ms)}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm leading-relaxed">
-                                                    {segment.text}
-                                                </p>
+                                            </div>
+                                            <div className="pl-9 space-y-1">
+                                                {group.texts.map((item: any, i: number) => (
+                                                    <p key={i} className="text-sm leading-relaxed">
+                                                        {item.text}
+                                                    </p>
+                                                ))}
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : transcription?.full_text ? (
+                                    ))}
+                                </div>
+                            );
+                        })() : transcription?.full_text ? (
                             <div className="p-4">
                                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
                                     {transcription.full_text}

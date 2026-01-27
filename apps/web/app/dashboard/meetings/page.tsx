@@ -24,26 +24,38 @@ type MeetingWithEvent = {
 
 function groupMeetingsByDate(meetings: MeetingWithEvent[]) {
     const groups: { [key: string]: MeetingWithEvent[] } = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
+    const options: Intl.DateTimeFormatOptions = { timeZone: "America/Sao_Paulo" };
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA", options);
+
+    const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo = new Date(today);
+    const yesterdayStr = yesterday.toLocaleDateString("en-CA", options);
+
+    const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toLocaleDateString("en-CA", options);
 
     meetings.forEach((meeting) => {
-        const date = new Date(meeting.scheduled_start || meeting.created_at);
-        date.setHours(0, 0, 0, 0);
+        const meetingDate = new Date(meeting.scheduled_start || meeting.created_at);
+        const meetingStr = meetingDate.toLocaleDateString("en-CA", options);
 
         let groupKey: string;
-        if (date >= today) {
+        if (meetingStr === todayStr) {
             groupKey = "Hoje";
-        } else if (date >= yesterday) {
+        } else if (meetingStr === yesterdayStr) {
             groupKey = "Ontem";
-        } else if (date >= weekAgo) {
+        } else if (meetingStr > todayStr) {
+            groupKey = "Próximos dias";
+        } else if (meetingStr >= weekAgoStr) {
             groupKey = "Esta semana";
         } else {
-            groupKey = date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+            groupKey = meetingDate.toLocaleDateString("pt-BR", {
+                month: "long",
+                year: "numeric",
+                timeZone: "America/Sao_Paulo"
+            });
             groupKey = groupKey.charAt(0).toUpperCase() + groupKey.slice(1);
         }
 
@@ -131,6 +143,7 @@ export default async function MeetingsPage() {
         return new Date(dateStr).toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
+            timeZone: "America/Sao_Paulo",
         });
     };
 

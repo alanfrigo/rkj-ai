@@ -393,21 +393,94 @@ class TranscriptionWorker:
         }
     
     def process_segments(self, result: dict, transcription_id: str) -> list:
-        """Convert OpenAI response to database segment format"""
+        """Convert OpenAI response to database segment format with quality filtering"""
         segments = []
+        MIN_CONFIDENCE = 0.4  # Minimum confidence threshold
+        MIN_TEXT_LENGTH = 3   # Minimum text length
         
         for i, segment in enumerate(result.get("segments", [])):
+            text = segment.get("text", "").strip()
+            confidence = segment.get("confidence")
+            
+            # Skip empty or too short text
+            if len(text) < MIN_TEXT_LENGTH:
+                logger.debug(f"Skipping short segment: '{text}'")
+                continue
+            
+            # Skip low confidence segments (if confidence is available)
+            if confidence is not None and confidence < MIN_CONFIDENCE:
+                logger.debug(f"Skipping low confidence segment ({confidence:.2f}): '{text}'")
+                continue
+            
+            # Filter out hallucinated patterns
+            if self._is_hallucination(text):
+                logger.debug(f"Skipping hallucinated segment: '{text}'")
+                continue
+            
             segments.append({
                 "transcription_id": transcription_id,
-                "segment_index": i,
+                "segment_index": len(segments),  # Re-index after filtering
                 "start_time_ms": int(segment["start"] * 1000),
                 "end_time_ms": int(segment["end"] * 1000),
-                "text": segment["text"].strip(),
-                "confidence": segment.get("confidence"),
+                "text": text,
+                "confidence": confidence,
                 "words": segment.get("words")
             })
         
         return segments
+    
+    def _is_hallucination(self, text: str) -> bool:
+        """Detect common Whisper hallucination patterns"""
+        text_lower = text.lower().strip()
+        
+        # Common hallucination patterns in Portuguese and English
+        hallucination_patterns = [
+            "e aí",
+            "oi",
+            "obrigado por assistir",
+            "obrigada por assistir",
+            "se inscreva",
+            "inscreva-se",
+            "curta o vídeo",
+            "like",
+            "subscribe",
+            "thanks for watching",
+            "thank you for watching",
+            "legenda automática",
+            "legendas automáticas",
+            "subtitles by",
+            "subtítulos por",
+            "copyright",
+            "♪", "♫", "🎵",
+            "...",
+            "[música]",
+            "[music]",
+            "[aplausos]",
+            "[risos]",
+        ]
+        
+        # Check exact matches or starts with pattern
+        for pattern in hallucination_patterns:
+            if text_lower == pattern or text_lower == pattern + ".":
+                return True
+            # Check if the entire text is just the pattern repeated
+            if text_lower.replace(".", "").replace(",", "").strip() == pattern:
+                return True
+        
+        # Detect repetitive patterns like "E aí E aí E aí"
+        words = text_lower.split()
+        if len(words) >= 2:
+            unique_words = set(words)
+            # If very few unique words but many total words, likely repetitive
+            if len(unique_words) <= 2 and len(words) >= 4:
+                return True
+        
+        # Detect if text is just punctuation or symbols
+        import re
+        if re.match(r'^[\s\.\,\!\?\;\:\-\_\.\.\.]$', text):
+            return True
+        
+        return False
     
     async def cleanup(self):
         """Cleanup resources"""

@@ -35,7 +35,35 @@ function formatTime(date: Date): string {
     return date.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
+        timeZone: "America/Sao_Paulo",
     });
+}
+
+function formatDate(date: Date): string {
+    const options: Intl.DateTimeFormatOptions = { timeZone: "America/Sao_Paulo" };
+    const now = new Date();
+
+    // Get dates in São Paulo timezone for comparison
+    const todayStr = now.toLocaleDateString("en-CA", options);
+    const eventStr = date.toLocaleDateString("en-CA", options);
+
+    const today = new Date(todayStr);
+    const tomorrow = new Date(todayStr);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+    if (eventStr === todayStr) {
+        return "Hoje";
+    } else if (eventStr === tomorrowStr) {
+        return "Amanhã";
+    } else {
+        return date.toLocaleDateString("pt-BR", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            timeZone: "America/Sao_Paulo",
+        });
+    }
 }
 
 export default async function DashboardPage() {
@@ -210,7 +238,7 @@ export default async function DashboardPage() {
                                             {formatTime(new Date(nextEvent.start_time))}
                                         </p>
                                         <p className="text-sm text-muted-foreground">
-                                            {formatTimeUntil(new Date(nextEvent.start_time))}
+                                            {formatDate(new Date(nextEvent.start_time))} · {formatTimeUntil(new Date(nextEvent.start_time))}
                                         </p>
                                     </div>
                                 </div>
@@ -270,7 +298,10 @@ export default async function DashboardPage() {
                                         key={event.id}
                                         className="flex items-center gap-4 px-4 py-3 hover:bg-accent/50 transition-colors"
                                     >
-                                        <div className="w-14 text-center">
+                                        <div className="w-16 text-center flex-shrink-0">
+                                            <p className="text-[10px] text-muted-foreground uppercase">
+                                                {formatDate(new Date(event.start_time))}
+                                            </p>
                                             <p className="font-mono text-sm">
                                                 {formatTime(new Date(event.start_time))}
                                             </p>
