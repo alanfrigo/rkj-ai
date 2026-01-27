@@ -22,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meeting Assistant",
-  description: "Grave e transcreva suas reunioes automaticamente",
+  title: "RKJ.AI - Assistente de Reuniões",
+  description: "Grave e transcreva suas reuniões automaticamente",
 };
 
 export default function RootLayout({
