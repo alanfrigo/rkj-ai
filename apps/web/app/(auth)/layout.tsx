@@ -1,4 +1,5 @@
-import { Mic, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 
 export default function AuthLayout({
     children,
@@ -10,12 +11,7 @@ export default function AuthLayout({
             {/* Left side - Branding */}
             <div className="hidden lg:flex lg:w-1/2 bg-card border-r border-border items-center justify-center p-12">
                 <div className="max-w-md space-y-10">
-                    <div className="flex items-center gap-3">
-                        <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Mic className="h-5 w-5 text-primary" />
-                        </div>
-                        <span className="font-display text-2xl font-semibold tracking-tight">RKJ.AI</span>
-                    </div>
+                    <Logo size="lg" />
 
                     <div className="space-y-4">
                         <h1 className="text-3xl font-display leading-tight text-balance">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Video, ChevronRight } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 
 export default function OnboardingLayout({
     children,
@@ -12,12 +12,7 @@ export default function OnboardingLayout({
             {/* Header */}
             <header className="border-b border-border">
                 <div className="container max-w-4xl mx-auto px-4 h-16 flex items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                            <Video className="h-4 w-4 text-primary-foreground" />
-                        </div>
-                        <span className="font-bold">Meeting Assistant</span>
-                    </div>
+                    <Logo size="md" />
                 </div>
             </header>
 

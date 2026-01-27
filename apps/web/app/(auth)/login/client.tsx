@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Mail, Lock, Chrome, Loader2 } from "lucide-react";
+import { Mail, Lock, Chrome, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Logo } from "@/components/ui/logo";
 
 export default function LoginClient() {
     const [email, setEmail] = useState("");
@@ -63,12 +64,7 @@ export default function LoginClient() {
         <div className="animate-fade-in space-y-6">
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-8">
-                <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Mic className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="font-display text-xl font-semibold tracking-tight">RKJ.AI</span>
-                </div>
+                <Logo size="lg" />
             </div>
 
             <Card className="border-border bg-card">

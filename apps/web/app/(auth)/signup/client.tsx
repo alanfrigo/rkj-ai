@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Video, Mail, Lock, User, Chrome, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Chrome, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Logo } from "@/components/ui/logo";
 
 export default function SignupClient() {
     const [fullName, setFullName] = useState("");
@@ -103,12 +104,7 @@ export default function SignupClient() {
         <div className="animate-fade-in space-y-6">
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-8">
-                <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-                        <Video className="h-5 w-5 text-primary-foreground" />
-                    </div>
-                    <span className="text-xl font-bold">Meeting Assistant</span>
-                </div>
+                <Logo size="lg" />
             </div>
 
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
@@ -222,11 +218,11 @@ export default function SignupClient() {
 
                         <p className="text-xs text-muted-foreground text-center">
                             Ao criar uma conta, você concorda com nossos{" "}
-                            <Link href="#" className="text-primary hover:underline">
+                            <Link href="/terms-and-conditions" className="text-primary hover:underline">
                                 Termos de Uso
                             </Link>{" "}
                             e{" "}
-                            <Link href="#" className="text-primary hover:underline">
+                            <Link href="/privacy-policy" className="text-primary hover:underline">
                                 Política de Privacidade
                             </Link>
                         </p>

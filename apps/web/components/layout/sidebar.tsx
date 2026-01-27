@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-    Mic,
     LayoutDashboard,
     Video,
     Settings,
@@ -15,6 +14,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 interface NavItem {
     label: string;
@@ -43,13 +43,8 @@ export function Sidebar() {
         <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="h-14 flex items-center px-4">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center">
-                        <Mic className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <span className="font-display text-base font-semibold tracking-tight">
-                        RKJ.AI
-                    </span>
+                <Link href="/dashboard">
+                    <Logo size="sm" />
                 </Link>
             </div>
 
