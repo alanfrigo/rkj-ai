@@ -14,7 +14,7 @@ services:
   # -------------------------------------------
   redis:
     image: redis:7-alpine
-    container_name: rkj-redis
+    container_name: ${REDIS_CONTAINER_NAME:-rkj-redis}
     restart: always
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
@@ -46,10 +46,10 @@ services:
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
         - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
     image: rkj-web:latest
-    container_name: rkj-web
+    container_name: ${WEB_CONTAINER_NAME:-rkj-web}
     restart: always
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
@@ -58,14 +58,14 @@ services:
       - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - ORCHESTRATOR_URL=http://$(PROJECT_NAME)_$(SERVICE_NAME)_bot-orchestrator:8002
+      - ORCHESTRATOR_URL=${ORCHESTRATOR_INTERNAL_URL:-http://bot-orchestrator:8002}
     depends_on:
       redis:
         condition: service_healthy
       bot-orchestrator:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_web:3000" ]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:3000" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -92,15 +92,15 @@ services:
       context: ../../apps/api
       dockerfile: Dockerfile
     image: rkj-api:latest
-    container_name: rkj-api
+    container_name: ${API_CONTAINER_NAME:-rkj-api}
     restart: always
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_INTERNAL_URL:-redis://redis:6379}
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -114,7 +114,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_api:8000/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -141,12 +141,13 @@ services:
       context: ../../services/scheduler
       dockerfile: Dockerfile
     image: rkj-scheduler:latest
-    container_name: rkj-scheduler
+    container_name: ${SCHEDULER_CONTAINER_NAME:-rkj-scheduler}
     restart: always
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_INTERNAL_URL:-redis://redis:6379}
+      - ORCHESTRATOR_URL=${ORCHESTRATOR_INTERNAL_URL:-http://bot-orchestrator:8002}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - BOT_JOIN_BEFORE_MINUTES=${BOT_JOIN_BEFORE_MINUTES:-2}
@@ -176,14 +177,14 @@ services:
       context: ../../services/bot-orchestrator
       dockerfile: Dockerfile
     image: rkj-bot-orchestrator:latest
-    container_name: rkj-bot-orchestrator
+    container_name: ${ORCHESTRATOR_CONTAINER_NAME:-rkj-bot-orchestrator}
     restart: always
     ports:
-      - "8002:8002"
+      - "${ORCHESTRATOR_PORT:-8002}:8002"
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_INTERNAL_URL:-redis://redis:6379}
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -191,21 +192,19 @@ services:
       - R2_PUBLIC_URL=${R2_PUBLIC_URL}
       - BOT_DISPLAY_NAME=${BOT_DISPLAY_NAME:-Meeting Assistant Bot 🤖}
       - BOT_MAX_DURATION_HOURS=${BOT_MAX_DURATION_HOURS:-4}
-      - BOT_IMAGE=rkj-meet-bot:latest
-      - DOCKER_NETWORK=rkj-ai-network
-      - RECORDINGS_VOLUME=docker_recordings
+      - BOT_IMAGE=${BOT_IMAGE:-rkj-meet-bot:latest}
+      - DOCKER_NETWORK=${DOCKER_NETWORK:-rkj-ai-network}
+      - RECORDINGS_VOLUME=${RECORDINGS_VOLUME:-docker_recordings}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      # Docker socket for spawning bot containers
       - /var/run/docker.sock:/var/run/docker.sock
-      # Shared recordings volume
       - recordings:/recordings
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_bot-orchestrator:8002/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -227,14 +226,11 @@ services:
   # -------------------------------------------
   # Meet Bot (Build only - spawned by orchestrator)
   # -------------------------------------------
-  # IMPORTANT: This service is NOT started directly.
-  # The image is built here and spawned dynamically
-  # by the bot-orchestrator when meetings start.
   meet-bot:
     build:
       context: ../../services/meet-bot
       dockerfile: Dockerfile
-    image: rkj-meet-bot:latest
+    image: ${BOT_IMAGE:-rkj-meet-bot:latest}
     profiles:
       - build-only
 
@@ -246,12 +242,12 @@ services:
       context: ../../services/transcription-worker
       dockerfile: Dockerfile
     image: rkj-transcription-worker:latest
-    container_name: rkj-transcription-worker
+    container_name: ${TRANSCRIPTION_CONTAINER_NAME:-rkj-transcription-worker}
     restart: always
     environment:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_INTERNAL_URL:-redis://redis:6379}
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -296,4 +292,4 @@ volumes:
 networks:
   rkj-ai:
     driver: bridge
-    name: rkj-ai-network
+    name: ${DOCKER_NETWORK:-rkj-ai-network}
