@@ -1,0 +1,285 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------
+  # Traefik (Reverse Proxy & SSL)
+  # -------------------------------------------
+  traefik:
+    image: traefik:v3.0
+    container_name: rkj-traefik
+    restart: always
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      # Global HTTP -> HTTPS Redirect
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - rkj-ai
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # -------------------------------------------
+  # Redis (Message Queue & Cache)
+  # -------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rkj-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rkj-ai
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # -------------------------------------------
+  # Web Frontend
+  # -------------------------------------------
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_APP_URL=https://${WEB_DOMAIN}
+        - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
+    container_name: rkj-web
+    restart: always
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_APP_URL=https://${WEB_DOMAIN}
+      - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - ORCHESTRATOR_URL=http://bot-orchestrator:8002
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`${WEB_DOMAIN}`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=myresolver"
+      - "traefik.http.services.web.loadbalancer.server.port=3000"
+    depends_on:
+      - bot-orchestrator
+    networks:
+      - rkj-ai
+
+  # -------------------------------------------
+  # Backend API
+  # -------------------------------------------
+  api:
+    build:
+      context: ../../apps/api
+      dockerfile: Dockerfile
+    container_name: rkj-api
+    restart: always
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=myresolver"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - rkj-ai
+
+  # -------------------------------------------
+  # Bot Orchestrator
+  # -------------------------------------------
+  bot-orchestrator:
+    build:
+      context: ../../services/bot-orchestrator
+      dockerfile: Dockerfile
+    container_name: rkj-bot-orchestrator
+    restart: always
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - BOT_DISPLAY_NAME=${BOT_DISPLAY_NAME:-Meeting Assistant Bot 🤖}
+      - BOT_MAX_DURATION_HOURS=${BOT_MAX_DURATION_HOURS:-4}
+      - BOT_IMAGE=docker-meet-bot:latest
+      - DOCKER_NETWORK=rkj-ai-network
+      - RECORDINGS_VOLUME=rkj_recordings
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GOOGLE_AUTH_LOGIN=${GOOGLE_AUTH_LOGIN}
+      - GOOGLE_AUTH_PASSWORD=${GOOGLE_AUTH_PASSWORD}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - recordings:/recordings
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - rkj-ai
+
+  # -------------------------------------------
+  # Scheduler
+  # -------------------------------------------
+  scheduler:
+    build:
+      context: ../../services/scheduler
+      dockerfile: Dockerfile
+    container_name: rkj-scheduler
+    restart: always
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - BOT_JOIN_BEFORE_MINUTES=${BOT_JOIN_BEFORE_MINUTES:-2}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - rkj-ai
+
+  # -------------------------------------------
+  # Transcription Worker
+  # -------------------------------------------
+  transcription-worker:
+    build:
+      context: ../../services/transcription-worker
+      dockerfile: Dockerfile
+    container_name: rkj-transcription-worker
+    restart: always
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_WHISPER_MODEL=${OPENAI_WHISPER_MODEL:-whisper-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - recordings:/recordings:ro
+      - temp_audio:/tmp/audio
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - rkj-ai
+
+  # -------------------------------------------
+  # Meet Bot (template for dynamic spawning)
+  # -------------------------------------------
+  meet-bot:
+    build:
+      context: ../../services/meet-bot
+      dockerfile: Dockerfile
+    image: docker-meet-bot:latest
+    profiles:
+      - build-only
+    # Note: Runtime constraints for spawned bots must be handled by the orchestrator code,
+    # but we document the target limits here:
+    # CPU: 2.0, Memory: 4G per bot
+
+volumes:
+  redis_data:
+  recordings:
+    name: rkj_recordings
+  temp_audio:
+  letsencrypt:
+
+
+networks:
+  rkj-ai:
+    name: rkj-ai-network
+    driver: bridge
