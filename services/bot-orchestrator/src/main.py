@@ -90,18 +90,24 @@ class BotOrchestrator:
         meeting_id = data.get("meeting_id")
         meeting_url = data.get("meeting_url")
         user_id = data.get("user_id")
+        bot_display_name = data.get("bot_display_name")
+        bot_camera_enabled = data.get("bot_camera_enabled", False)
         
         if not all([meeting_id, meeting_url, user_id]):
             logger.error(f"Invalid job data: {data}")
             return
         
         logger.info(f"Processing meeting: {meeting_id}")
+        logger.info(f"  Bot Name: {bot_display_name}")
+        logger.info(f"  Camera Enabled: {bot_camera_enabled}")
         
         # Spawn bot container
         container = self.container_manager.spawn_bot(
             meeting_id=meeting_id,
             meeting_url=meeting_url,
-            user_id=user_id
+            user_id=user_id,
+            bot_display_name=bot_display_name,
+            bot_camera_enabled=bot_camera_enabled
         )
         
         if container:

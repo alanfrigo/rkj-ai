@@ -662,18 +662,22 @@ class MeetBot:
             '[data-tooltip*="câmera"]',
         ]
 
-        for selector in camera_selectors:
-            # We want to keep camera ON for the robot emoji
-             pass
-             # try:
-             #    camera_btn = await self.page.query_selector(selector)
-             #    if camera_btn and await camera_btn.is_visible():
-             #        await camera_btn.click()
-             #        logger.info(f"Camera turned off via: {selector}")
-             #        camera_off = True
-             #        break
-             # except:
-             #    pass
+        # Only turn off camera if BOT_CAMERA_ENABLED is False
+        if not config.BOT_CAMERA_ENABLED:
+            logger.info("Camera disabled by config, attempting to turn off...")
+            for selector in camera_selectors:
+                try:
+                    camera_btn = await self.page.query_selector(selector)
+                    if camera_btn and await camera_btn.is_visible():
+                        await camera_btn.click()
+                        logger.info(f"Camera turned off via: {selector}")
+                        camera_off = True
+                        break
+                except:
+                    pass
+        else:
+            logger.info("Camera enabled by config, keeping camera on")
+            camera_off = True  # Mark as handled
 
         # Microphone toggle selectors (EN + PT-BR)
         mic_selectors = [
@@ -700,14 +704,13 @@ class MeetBot:
 
         # Fallback: use keyboard shortcuts
         # Google Meet shortcuts: Ctrl+D for camera, Ctrl+E for mic
-        if not camera_off:
-            pass
-            # try:
-            #     logger.info("Trying keyboard shortcut Ctrl+D for camera")
-            #     await self.page.keyboard.press("Control+d")
-            #     await asyncio.sleep(0.5)
-            # except Exception as e:
-            #     logger.debug(f"Keyboard shortcut for camera failed: {e}")
+        if not camera_off and not config.BOT_CAMERA_ENABLED:
+            try:
+                logger.info("Trying keyboard shortcut Ctrl+D for camera")
+                await self.page.keyboard.press("Control+d")
+                await asyncio.sleep(0.5)
+            except Exception as e:
+                logger.debug(f"Keyboard shortcut for camera failed: {e}")
 
         if not mic_off:
             try:

@@ -64,6 +64,16 @@ export async function POST(request: Request) {
 
         // Queue bot job via Redis
         try {
+            // Fetch user settings for bot configuration
+            const { data: profile } = await supabase
+                .from("users")
+                .select("settings")
+                .eq("id", user.id)
+                .single();
+
+            const botDisplayName = profile?.settings?.bot_display_name ?? "Meeting Assistant Bot 🤖";
+            const botCameraEnabled = profile?.settings?.bot_camera_enabled ?? false;
+
             const Redis = require("ioredis");
             const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
@@ -74,6 +84,8 @@ export async function POST(request: Request) {
                     meeting_id: meetingId,
                     meeting_url: meetingUrl,
                     user_id: user.id,
+                    bot_display_name: botDisplayName,
+                    bot_camera_enabled: botCameraEnabled,
                 },
                 created_at: new Date().toISOString()
             };

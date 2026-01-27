@@ -26,7 +26,9 @@ class ContainerManager:
         self,
         meeting_id: str,
         meeting_url: str,
-        user_id: str
+        user_id: str,
+        bot_display_name: Optional[str] = None,
+        bot_camera_enabled: bool = False
     ) -> Optional[Container]:
         """
         Spawn a new Meet Bot container
@@ -39,13 +41,17 @@ class ContainerManager:
         logger.info(f"  Meeting URL: {meeting_url}")
         logger.info(f"  User ID: {user_id}")
         
+        # Use provided bot_display_name or fall back to config
+        display_name = bot_display_name or config.BOT_DISPLAY_NAME
+        
         try:
             # Environment variables for the bot
             environment = {
                 "MEETING_ID": meeting_id,
                 "MEETING_URL": meeting_url,
                 "USER_ID": user_id,
-                "BOT_DISPLAY_NAME": config.BOT_DISPLAY_NAME,
+                "BOT_DISPLAY_NAME": display_name,
+                "BOT_CAMERA_ENABLED": str(bot_camera_enabled).lower(),
                 "BOT_MAX_DURATION_HOURS": str(config.BOT_MAX_DURATION_HOURS),
                 "SUPABASE_URL": config.SUPABASE_URL,
                 "SUPABASE_SERVICE_KEY": config.SUPABASE_SERVICE_KEY,

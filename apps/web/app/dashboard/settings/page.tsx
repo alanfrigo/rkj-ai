@@ -35,7 +35,10 @@ export default async function SettingsPage() {
         auto_record: profile?.settings?.auto_record ?? true,
         email_notifications: profile?.settings?.email_notifications ?? true,
         notifications_enabled: profile?.settings?.notifications_enabled ?? true,
+        bot_display_name: profile?.settings?.bot_display_name ?? "Meeting Assistant Bot 🤖",
+        bot_camera_enabled: profile?.settings?.bot_camera_enabled ?? false,
     };
+
 
     return (
         <div className="animate-fade-in max-w-2xl">

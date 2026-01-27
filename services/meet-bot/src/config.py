@@ -14,6 +14,7 @@ class Config:
     
     # Bot Display
     BOT_NAME: str = os.getenv("BOT_DISPLAY_NAME", "Meeting Assistant Bot 🤖")
+    BOT_CAMERA_ENABLED: bool = os.getenv("BOT_CAMERA_ENABLED", "false").lower() == "true"
     
     # Recording
     RECORDING_DIR: str = os.getenv("RECORDING_DIR", "/recordings")
