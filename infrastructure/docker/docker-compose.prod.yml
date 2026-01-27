@@ -58,14 +58,14 @@ services:
       - NEXT_PUBLIC_R2_URL=${R2_PUBLIC_URL}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - ORCHESTRATOR_URL=http://bot-orchestrator:8002
+      - ORCHESTRATOR_URL=http://$(PROJECT_NAME)_$(SERVICE_NAME)_bot-orchestrator:8002
     depends_on:
       redis:
         condition: service_healthy
       bot-orchestrator:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:3000" ]
+      test: [ "CMD", "wget", "-q", "--spider", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_web:3000" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -114,7 +114,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: [ "CMD", "curl", "-f", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_api:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -205,7 +205,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
+      test: [ "CMD", "curl", "-f", "http://$(PROJECT_NAME)_$(SERVICE_NAME)_bot-orchestrator:8002/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
