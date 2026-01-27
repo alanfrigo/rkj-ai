@@ -208,16 +208,23 @@ class MeetingScheduler:
         now = datetime.utcnow()
         join_window = now + timedelta(minutes=BOT_JOIN_BEFORE_MINUTES)
         
-        # Find events starting within the join window
+        # Find events that:
+        # 1. Are about to start (start_time within join window) OR
+        # 2. Have already started but not ended yet (ongoing meetings)
+        # We use end_time > now to ensure the meeting is still happening
+        # Note: We append 'Z' to indicate UTC timezone for proper comparison
         result = self.supabase.table('calendar_events')\
             .select('*')\
             .eq('should_record', True)\
             .eq('status', 'confirmed')\
-            .gte('start_time', now.isoformat())\
-            .lte('start_time', join_window.isoformat())\
+            .lte('start_time', join_window.isoformat() + 'Z')\
+            .gt('end_time', now.isoformat() + 'Z')\
             .execute()
         
         events = result.data or []
+        
+        if events:
+            logger.info(f"Found {len(events)} meetings to potentially join")
         
         for event in events:
             await self.schedule_bot_join(event)
@@ -237,6 +244,17 @@ class MeetingScheduler:
             logger.debug(f"Meeting already scheduled for event {event_id}")
             return
         
+        # Fetch user settings for bot configuration
+        user_result = self.supabase.table('users')\
+            .select('settings')\
+            .eq('id', user_id)\
+            .single()\
+            .execute()
+        
+        user_settings = user_result.data.get('settings', {}) if user_result.data else {}
+        bot_display_name = user_settings.get('bot_display_name', 'Meeting Assistant Bot 🤖')
+        bot_camera_enabled = user_settings.get('bot_camera_enabled', False)
+        
         # Create meeting record
         meeting = self.supabase.table('meetings').insert({
             "user_id": user_id,
@@ -251,6 +269,7 @@ class MeetingScheduler:
         
         meeting_id = meeting['id']
         logger.info(f"Created meeting {meeting_id} for event {event_id}")
+        logger.info(f"  Bot Name: {bot_display_name}, Camera: {bot_camera_enabled}")
         
         # Enqueue bot join job
         job = {
@@ -259,7 +278,9 @@ class MeetingScheduler:
                 "meeting_id": meeting_id,
                 "meeting_url": event['meeting_url'],
                 "meeting_provider": event['meeting_provider'],
-                "user_id": user_id
+                "user_id": user_id,
+                "bot_display_name": bot_display_name,
+                "bot_camera_enabled": bot_camera_enabled
             },
             "status": "queued",
             "created_at": datetime.utcnow().isoformat()
