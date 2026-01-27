@@ -49,7 +49,7 @@ services:
     container_name: ${WEB_CONTAINER_NAME:-rkj-web}
     restart: always
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3001}:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
