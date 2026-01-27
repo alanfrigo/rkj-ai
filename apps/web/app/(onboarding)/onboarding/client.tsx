@@ -83,10 +83,17 @@ export default function OnboardingClient() {
         setError(null);
 
         // Redirect to Google Calendar OAuth with additional scopes
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        console.log("Debug Calendar Auth:", {
+            NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+            window_origin: window.location.origin,
+            final_appUrl: appUrl
+        });
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-                redirectTo: `${window.location.origin}/api/calendar/callback`,
+                redirectTo: `${appUrl}/api/calendar/callback`,
                 scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events.readonly",
                 queryParams: {
                     access_type: "offline",
@@ -123,10 +130,10 @@ export default function OnboardingClient() {
                     <div key={s.id} className="flex items-center">
                         <div
                             className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${step === s.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : steps.findIndex((st) => st.id === step) > i
-                                        ? "bg-success text-success-foreground"
-                                        : "bg-secondary text-muted-foreground"
+                                ? "bg-primary text-primary-foreground"
+                                : steps.findIndex((st) => st.id === step) > i
+                                    ? "bg-success text-success-foreground"
+                                    : "bg-secondary text-muted-foreground"
                                 }`}
                         >
                             {steps.findIndex((st) => st.id === step) > i ? (
@@ -138,8 +145,8 @@ export default function OnboardingClient() {
                         {i < steps.length - 1 && (
                             <div
                                 className={`w-12 h-0.5 mx-2 transition-all ${steps.findIndex((st) => st.id === step) > i
-                                        ? "bg-success"
-                                        : "bg-border"
+                                    ? "bg-success"
+                                    : "bg-border"
                                     }`}
                             />
                         )}
