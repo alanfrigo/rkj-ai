@@ -211,7 +211,7 @@ Think of it as your own private TLDV or Fireflies.ai — fully open source.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/rkj-ai.git
+git clone https://github.com/alanfrigo/rkj-ai.git
 cd rkj-ai
 
 # 2. Copy environment template
