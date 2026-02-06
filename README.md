@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.png" alt="RKJ.AI Logo" width="200">
+
 # RKJ.AI
 
 ### Intelligent Meeting Assistant
@@ -13,7 +15,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-[Features](#-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Deployment](#-deployment) • [API](#-api-documentation) • [Contributing](#-contributing)
+[Features](#-features) • [Screenshots](#-screenshots) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Deployment](#-deployment) • [API](#-api-documentation) • [Contributing](#-contributing)
 
 </div>
 
@@ -57,6 +59,22 @@ Think of it as your own private TLDV or Fireflies.ai — fully open source.
 | OpenAI Transcription | ✅ Fully working |
 | Speaker Diarization | ✅ Via live captions |
 | AI Summaries | 🚧 Planned |
+
+---
+
+## Screenshots
+
+### Dashboard
+<img src="assets/dashboard.png" alt="Dashboard" width="100%">
+
+### Meetings
+<img src="assets/meetings.png" alt="Meetings list" width="100%">
+
+### Meeting Details & Transcription
+<img src="assets/single-meeting-page.png" alt="Meeting details with video player and transcription" width="100%">
+
+### Settings
+<img src="assets/config-page.png" alt="Settings page" width="100%">
 
 ---
 
