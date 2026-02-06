@@ -1,23 +1,71 @@
-# Meeting Assistant
+<div align="center">
 
-Um assistente de reuniões inteligente que automatiza a gravação e transcrição de reuniões do Google Meet e Zoom.
+# RKJ.AI
 
-## 🎯 Visão Geral
+### Intelligent Meeting Assistant
 
-O Meeting Assistant é uma solução self-hosted que:
+**Automatically record and transcribe your Google Meet & Zoom meetings**
 
-- **Sincroniza** automaticamente com seu Google Calendar
-- **Entra** automaticamente em reuniões do Google Meet e Zoom
-- **Grava** áudio e vídeo das reuniões
-- **Transcreve** usando OpenAI Whisper API com identificação de speakers
-- **Disponibiliza** gravações e transcrições em um dashboard intuitivo
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-## 🏗️ Arquitetura
+[Features](#-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Deployment](#-deployment) • [API](#-api-documentation) • [Contributing](#-contributing)
+
+</div>
+
+---
+
+## Overview
+
+RKJ.AI is a self-hosted meeting assistant that automatically:
+
+- **Syncs** with your Google Calendar
+- **Joins** your Google Meet and Zoom meetings
+- **Records** audio and video in high quality (1080p)
+- **Transcribes** using OpenAI Whisper with speaker identification
+- **Stores** everything securely in your own infrastructure
+
+Think of it as your own private TLDV or Fireflies.ai — fully open source.
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Calendar Sync** | Automatically detects meetings from Google Calendar |
+| **Auto-Join Bot** | Bot enters meetings 2 minutes before start time |
+| **HD Recording** | 1080p video + audio recording using FFmpeg |
+| **AI Transcription** | OpenAI Whisper API with multi-language support |
+| **Speaker ID** | Identifies who said what using live captions |
+| **Full-Text Search** | Search across all your meeting transcriptions |
+| **Export Options** | Download as TXT, SRT, VTT, or JSON |
+| **Dark Mode** | Beautiful responsive UI with dark/light themes |
+| **Self-Hosted** | Your data stays on your infrastructure |
+
+### Status
+
+| Component | Status |
+|-----------|--------|
+| Google Meet Bot | ✅ Fully working |
+| Zoom Bot | 🚧 Planned |
+| Google Calendar Sync | ✅ Fully working |
+| OpenAI Transcription | ✅ Fully working |
+| Speaker Diarization | ✅ Via live captions |
+| AI Summaries | 🚧 Planned |
+
+---
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                   FRONTEND                                       │
-│                              (NextJs 16 + Supabase Auth)                        │
+│                              (Next.js 16 + Supabase Auth)                        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │  Dashboard  │  │  Calendar   │  │  Recordings │  │  Transcription Viewer   │ │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
@@ -39,7 +87,7 @@ O Meeting Assistant é uma solução self-hosted que:
 │   SCHEDULER         │    │   BOT ORCHESTRATOR  │    │  TRANSCRIPTION WORKER   │
 │                     │    │                     │    │                         │
 │ • Calendar Sync     │    │ • Bot Lifecycle     │    │ • OpenAI Whisper API    │
-│ • Meeting Detection │    │ • Container Mgmt    │    │ • Speaker Diarization   │
+│ • Meeting Detection │    │ • Container Mgmt    │    │ • Speaker Attribution   │
 │ • Job Scheduling    │    │ • Health Monitoring │    │ • Post Processing       │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────────┘
                                         │
@@ -47,7 +95,7 @@ O Meeting Assistant é uma solução self-hosted que:
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                              BOT WORKERS (Docker)                                │
 │  ┌───────────────────────────────┐    ┌───────────────────────────────────────┐ │
-│  │      GOOGLE MEET BOT          │    │           ZOOM BOT                    │ │
+│  │      GOOGLE MEET BOT          │    │           ZOOM BOT (Planned)          │ │
 │  │  • Playwright + Chrome        │    │  • Zoom Meeting SDK                   │ │
 │  │  • FFmpeg Recording           │    │  • Native Recording                   │ │
 │  └───────────────────────────────┘    └───────────────────────────────────────┘ │
@@ -76,163 +124,137 @@ O Meeting Assistant é uma solução self-hosted que:
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 📁 Estrutura do Projeto
+---
 
-```
-meeting-assistant/
-├── apps/
-│   ├── web/                    # Frontend NextJs 16
-│   │   ├── src/
-│   │   │   ├── app/           # App Router
-│   │   │   ├── components/    # React Components
-│   │   │   ├── lib/           # Utilities
-│   │   │   └── hooks/         # Custom Hooks
-│   │   └── package.json
-│   │
-│   └── api/                    # Backend FastAPI
-│       ├── src/
-│       │   ├── routers/       # API Routes
-│       │   ├── services/      # Business Logic
-│       │   ├── models/        # Pydantic Models
-│       │   └── core/          # Config & Utils
-│       └── requirements.txt
-│
-├── services/
-│   ├── scheduler/              # Calendar Sync & Scheduling
-│   ├── bot-orchestrator/       # Bot Container Management
-│   ├── meet-bot/               # Google Meet Bot
-│   ├── zoom-bot/               # Zoom Bot
-│   ├── transcription-worker/   # OpenAI Whisper Processing
-│   └── media-processor/        # FFmpeg Processing
-│
-├── packages/
-│   └── shared/                 # Shared Types & Utils
-│
-├── infrastructure/
-│   ├── docker/                 # Docker Compose
-│   ├── supabase/              # Database Migrations
-│   └── scripts/               # Deployment Scripts
-│
-├── docs/                       # Documentation
-├── README.md
-├── CLAUDE.md                   # AI Assistant Context
-└── .env.example
-```
+## Tech Stack
 
-## 🛠️ Tech Stack
+### Frontend
 
-| Componente | Tecnologia |
-|------------|------------|
-| Frontend | NextJs 16, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend API | FastAPI, Python 3.11+ |
-| Database | Supabase (PostgreSQL) |
-| Auth | Supabase Auth + Google OAuth |
-| Storage | Cloudflare R2 |
-| Queue | Redis + BullMQ |
-| Transcription | OpenAI Whisper API |
-| Bot Runtime | Playwright, Docker |
-| Containers | Docker, Docker Compose |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Next.js | 16 | React framework with App Router & Server Components |
+| React | 19 | UI library |
+| TypeScript | 5 | Type safety |
+| Tailwind CSS | 4 | Styling |
+| shadcn/ui | Latest | UI component library |
+| Supabase SSR | 0.8 | Authentication & database client |
 
-## 🚀 Quick Start
+### Backend
 
-### Pré-requisitos
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| FastAPI | 0.109 | Async Python web framework |
+| Pydantic | 2.5 | Data validation |
+| Supabase | 2.3 | Database & auth client |
+| Redis | 5.0 | Job queues & caching |
+| boto3 | 1.34 | S3/R2 storage client |
+| OpenAI | 1.9 | Whisper transcription API |
+
+### Infrastructure
+
+| Technology | Purpose |
+|------------|---------|
+| Docker | Containerization |
+| Traefik | Reverse proxy & auto SSL |
+| Redis + BullMQ | Message queue |
+| Cloudflare R2 | S3-compatible object storage |
+| Supabase | PostgreSQL database + auth |
+
+### Bot Technology
+
+| Technology | Purpose |
+|------------|---------|
+| Playwright | Browser automation |
+| FFmpeg | Video/audio recording |
+| PulseAudio | Audio capture |
+| Xvfb | Virtual display |
+
+---
+
+## Quick Start
+
+### Prerequisites
 
 - Docker & Docker Compose
 - Node.js 20+
 - Python 3.11+
-- Conta Supabase
-- Conta Cloudflare (R2)
-- Conta OpenAI (API Key)
-- Google Cloud Console (OAuth + Calendar API)
+- [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started)
 
-### 1. Clone o repositório
+### External Services Required
+
+| Service | Purpose | Sign Up |
+|---------|---------|---------|
+| Supabase | Database & auth | [supabase.com](https://supabase.com) |
+| Cloudflare R2 | File storage | [cloudflare.com](https://cloudflare.com) |
+| OpenAI | Transcription API | [platform.openai.com](https://platform.openai.com) |
+| Google Cloud | OAuth & Calendar API | [console.cloud.google.com](https://console.cloud.google.com) |
+
+### Installation
 
 ```bash
-git clone https://github.com/seu-usuario/meeting-assistant.git
-cd meeting-assistant
-```
+# 1. Clone the repository
+git clone https://github.com/your-username/rkj-ai.git
+cd rkj-ai
 
-### 2. Configure as variáveis de ambiente
-
-```bash
+# 2. Copy environment template
 cp .env.example .env
-# Edite .env com suas credenciais
+
+# 3. Edit .env with your credentials
+# See "Environment Variables" section below
+
+# 4. Start all services
+./scripts/dev.sh up
 ```
 
-### 3. Inicie os serviços
+### Available URLs
 
-```bash
-# Desenvolvimento
-docker-compose -f infrastructure/docker/docker-compose.yml up -d
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| API Docs (ReDoc) | http://localhost:8000/redoc |
+| Supabase Studio | http://localhost:54323 |
+| Email Testing (Inbucket) | http://localhost:54324 |
 
-# Ou use o script
-./scripts/dev.sh
-```
+### Development Commands
 
-### 4. Execute as migrations
+| Command | Description |
+|---------|-------------|
+| `./scripts/dev.sh up` | Start all services (Supabase + Docker) |
+| `./scripts/dev.sh down` | Stop all services |
+| `./scripts/dev.sh logs` | Follow all service logs |
+| `./scripts/dev.sh logs api` | Follow specific service logs |
+| `./scripts/dev.sh status` | Show service status |
+| `./scripts/dev.sh build` | Rebuild all Docker images |
+| `./scripts/dev.sh build-bot` | Rebuild meet-bot image only |
+| `./scripts/dev.sh db:migrate` | Apply database migrations |
+| `./scripts/dev.sh db:reset` | Reset database (destroys data) |
+| `./scripts/dev.sh test` | Run tests |
+| `./scripts/dev.sh api` | Run API in dev mode (hot reload) |
+| `./scripts/dev.sh web` | Run frontend in dev mode |
 
-```bash
-cd infrastructure/supabase
-supabase db push
-```
+---
 
-### 5. Inicie o frontend
+## Environment Variables
 
-```bash
-cd apps/web
-pnpm install
-pnpm dev
-```
-
-## ⚙️ Configuração
-
-### Google Cloud Console
-
-1. Crie um projeto no [Google Cloud Console](https://console.cloud.google.com)
-2. Ative as APIs:
-   - Google Calendar API
-   - Google People API
-3. Configure OAuth 2.0:
-   - Tipo: Web Application
-   - Redirect URIs: `http://localhost:3000/api/auth/callback/google`
-4. Copie Client ID e Client Secret para `.env`
-
-### Supabase
-
-1. Crie um projeto no [Supabase](https://supabase.com)
-2. Copie URL e API Keys para `.env`
-3. Execute as migrations em `infrastructure/supabase/`
-
-### Cloudflare R2
-
-1. Acesse o [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Crie um bucket R2 chamado `meeting-assistant`
-3. Gere API Token com permissões R2
-4. Copie Account ID, Access Key e Secret Key para `.env`
-
-### OpenAI
-
-1. Acesse [OpenAI Platform](https://platform.openai.com)
-2. Gere uma API Key
-3. Copie para `.env`
-
-## 📋 Variáveis de Ambiente
+Create a `.env` file from `.env.example`:
 
 ```env
 # Supabase
-SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_KEY=eyJ...
 
 # Cloudflare R2
-R2_ACCOUNT_ID=xxx
-R2_ACCESS_KEY_ID=xxx
-R2_SECRET_ACCESS_KEY=xxx
+R2_ACCOUNT_ID=your_account_id
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
 R2_BUCKET_NAME=meeting-assistant
 R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
 # OpenAI
-OPENAI_API_KEY=sk-xxx
+OPENAI_API_KEY=sk-...
 
 # Google OAuth
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
@@ -241,80 +263,279 @@ GOOGLE_CLIENT_SECRET=xxx
 # Redis
 REDIS_URL=redis://localhost:6379
 
-# App
+# Application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 API_URL=http://localhost:8000
+
+# Bot Configuration
+BOT_DISPLAY_NAME=RKJ.AI
+BOT_JOIN_BEFORE_MINUTES=2
+BOT_MAX_DURATION_HOURS=4
 ```
 
-## 🔄 Fluxo de Funcionamento
+### Google Cloud Setup
 
-1. **Usuário conecta Google Calendar** → OAuth flow salva refresh token
-2. **Scheduler sincroniza eventos** → A cada 5 minutos, busca eventos com links de reunião
-3. **2 minutos antes da reunião** → Job é enfileirado para o bot entrar
-4. **Bot Orchestrator** → Inicia container Docker com o bot apropriado
-5. **Bot entra na reunião** → Playwright navega e entra no Google Meet
-6. **Gravação inicia** → FFmpeg captura tela + áudio
-7. **Reunião termina** → Bot detecta e finaliza gravação
-8. **Upload para R2** → Arquivo é enviado para Cloudflare R2
-9. **Transcrição** → OpenAI Whisper API processa o áudio
-10. **Disponibilização** → Usuário acessa gravação e transcrição no dashboard
+1. Create a project at [Google Cloud Console](https://console.cloud.google.com)
+2. Enable APIs:
+   - Google Calendar API
+   - Google People API
+3. Create OAuth 2.0 credentials:
+   - Application type: Web application
+   - Authorized redirect URIs: `http://localhost:3000/callback`
+4. Copy Client ID and Secret to `.env`
 
-## 📖 API Documentation
+---
 
-Após iniciar o backend, acesse:
+## Deployment
+
+### Production Architecture
+
+```
+┌─────────────────────┐                 ┌─────────────────────────┐
+│      VERCEL         │                 │         VPS             │
+├─────────────────────┤                 ├─────────────────────────┤
+│ • Next.js Frontend  │ ──────────────► │ • Traefik (SSL)         │
+│ • CDN Global        │     HTTPS       │ • FastAPI (API)         │
+│ • your-domain.com   │                 │ • Redis (Queue)         │
+└─────────────────────┘                 │ • Bot Orchestrator      │
+                                        │ • Transcription Worker  │
+                                        │ • api.your-domain.com   │
+                                        └─────────────────────────┘
+```
+
+### Backend Deployment (VPS)
+
+**Requirements:**
+- Ubuntu 22.04 or 24.04 LTS
+- 8GB RAM minimum (32GB+ for multiple concurrent bots)
+- DNS configured: `api.yourdomain.com` → VPS IP
+
+```bash
+# On your VPS
+git clone https://github.com/your-username/rkj-ai.git
+cd rkj-ai
+
+# Configure environment
+cp .env.example .env
+# Edit .env with production values
+
+# Add required production variables
+echo "API_DOMAIN=api.yourdomain.com" >> .env
+echo "ACME_EMAIL=your-email@domain.com" >> .env
+
+# Deploy
+sudo ./deploy.sh
+```
+
+The deploy script will:
+1. Install Docker (if needed)
+2. Configure UFW firewall (ports 22, 80, 443)
+3. Build and start all containers
+4. Configure Traefik with automatic Let's Encrypt SSL
+
+### Frontend Deployment (Vercel)
+
+1. Connect your repository to [Vercel](https://vercel.com)
+2. Configure project:
+   - **Framework:** Next.js
+   - **Root Directory:** `apps/web`
+3. Add environment variables:
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` |
+| `NEXT_PUBLIC_APP_URL` | `https://yourdomain.com` |
+| `NEXT_PUBLIC_API_URL` | `https://api.yourdomain.com` |
+
+---
+
+## Project Structure
+
+```
+rkj-ai/
+├── apps/
+│   ├── web/                    # Next.js 16 Frontend
+│   │   ├── app/                # App Router pages
+│   │   ├── components/         # React components
+│   │   └── lib/                # Utilities & clients
+│   │
+│   └── api/                    # FastAPI Backend
+│       ├── src/
+│       │   ├── routers/        # API endpoints
+│       │   ├── services/       # Business logic
+│       │   ├── models/         # Pydantic models
+│       │   └── core/           # Clients & config
+│       └── requirements.txt
+│
+├── services/
+│   ├── scheduler/              # Calendar sync & job scheduling
+│   ├── bot-orchestrator/       # Docker container management
+│   ├── meet-bot/               # Google Meet bot (Playwright)
+│   └── transcription-worker/   # OpenAI Whisper processing
+│
+├── infrastructure/
+│   ├── docker/
+│   │   ├── docker-compose.yml      # Development
+│   │   └── docker-compose.prod.yml # Production
+│   └── supabase/
+│       └── migrations/             # Database schema
+│
+├── scripts/
+│   ├── dev.sh                  # Development helper
+│   └── benchmark/              # Performance testing
+│
+├── deploy.sh                   # Production deployment
+├── .env.example                # Environment template
+└── README.md
+```
+
+---
+
+## API Documentation
+
+### Authentication
+
+All API endpoints require authentication via Bearer token from Supabase Auth.
+
+```bash
+curl -H "Authorization: Bearer <token>" https://api.yourdomain.com/api/meetings
+```
+
+### Main Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/meetings` | List all meetings |
+| POST | `/api/meetings` | Create manual meeting |
+| GET | `/api/meetings/{id}` | Get meeting with recordings & transcription |
+| GET | `/api/calendar/events` | List calendar events |
+| POST | `/api/calendar/sync` | Trigger calendar sync |
+| GET | `/api/transcriptions/search?q=` | Search transcriptions |
+| GET | `/api/transcriptions/{id}/export?format=srt` | Export transcription |
+| GET | `/api/recordings/{id}/url` | Get presigned download URL |
+
+### Full Documentation
+
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## 🧪 Testes
+---
 
-```bash
-# Backend
-cd apps/api
-pytest
+## Database Schema
 
-# Frontend
-cd apps/web
-pnpm test
+### Core Tables
+
+| Table | Description |
+|-------|-------------|
+| `users` | User profiles (extends Supabase Auth) |
+| `connected_calendars` | Linked Google/Outlook calendars |
+| `calendar_events` | Synced calendar events |
+| `meetings` | Recorded meeting sessions |
+| `recordings` | Video/audio files metadata |
+| `transcriptions` | Transcription content & metadata |
+| `transcription_segments` | Individual speaker segments |
+| `processing_jobs` | Async job tracking |
+
+### Security
+
+- **Row Level Security (RLS)** enabled on all tables
+- Users can only access their own data
+- Service role bypasses RLS for backend operations
+
+---
+
+## Workflow
+
+```
+1. User connects Google Calendar
+   ↓
+2. Scheduler syncs events (every 5 minutes)
+   ↓
+3. 2 minutes before meeting → Job queued
+   ↓
+4. Bot Orchestrator spawns Docker container
+   ↓
+5. Meet Bot joins meeting via Playwright
+   ↓
+6. FFmpeg records audio + video
+   ↓
+7. Meeting ends → Recording uploaded to R2
+   ↓
+8. Transcription Worker processes audio
+   ↓
+9. User accesses recording + transcription in dashboard
 ```
 
-## 🚢 Deploy
+---
 
-### Docker (Recomendado)
+## Security Features
 
-```bash
-docker-compose -f infrastructure/docker/docker-compose.prod.yml up -d
-```
+- **Authentication**: Supabase Auth with Google OAuth
+- **Row Level Security**: PostgreSQL RLS on all tables
+- **Rate Limiting**: Redis-based sliding window (100 req/min global, 200 auth)
+- **Security Headers**: HSTS, X-Frame-Options, XSS protection via Traefik
+- **Presigned URLs**: Time-limited access to recordings (5 min - 24 hours)
+- **Encrypted Storage**: Refresh tokens encrypted at rest
 
-### Kubernetes
+---
 
-```bash
-kubectl apply -f infrastructure/k8s/
-```
+## Contributing
 
-## 📝 Roadmap
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
 
-- [x] Arquitetura base
-- [x] MVP - Google Calendar Sync
-- [x] MVP - Google Meet Bot
-- [x] MVP - Gravação básica
-- [x] MVP - Transcrição OpenAI
-- [x] Dashboard básico
-- [ ] Zoom Bot
-- [ ] Speaker Diarization
-- [ ] Resumos com IA
-- [ ] Integrações (Slack, Notion)
+### Development Setup
 
-## 🤝 Contribuição
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run tests: `./scripts/dev.sh test`
+5. Commit: `git commit -m 'Add amazing feature'`
+6. Push: `git push origin feature/amazing-feature`
+7. Open a Pull Request
 
-Contribuições são bem-vindas! Por favor, leia nosso guia de contribuição antes de enviar PRs.
+---
 
-## 📄 Licença
+## Roadmap
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+- [x] Google Calendar sync
+- [x] Google Meet bot
+- [x] HD video recording
+- [x] OpenAI Whisper transcription
+- [x] Speaker identification via captions
+- [x] Full-text search
+- [x] Export (TXT, SRT, VTT, JSON)
+- [x] Dark mode
+- [x] Rate limiting & security
+- [ ] Zoom bot
+- [ ] Advanced speaker diarization
+- [ ] AI-generated meeting summaries
+- [ ] Action items extraction
+- [ ] Slack/Notion integrations
+- [ ] Public API
 
-## ⚠️ Disclaimer
+---
 
-Este projeto usa browser automation para entrar em reuniões. Certifique-se de:
-- Ter permissão para gravar as reuniões
-- Informar os participantes sobre a gravação
-- Cumprir com as leis de privacidade locais (LGPD, GDPR, etc.)
+## Disclaimer
+
+This project uses browser automation to join meetings. Please ensure you:
+
+- Have permission to record meetings
+- Inform participants about the recording
+- Comply with local privacy laws (GDPR, CCPA, etc.)
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Built with love by [Alan Frigo](https://github.com/alanfrigo)**
+
+[Report Bug](https://github.com/alanfrigo/rkj-ai/issues) • [Request Feature](https://github.com/alanfrigo/rkj-ai/issues)
+
+</div>
